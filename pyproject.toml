@@ -1,0 +1,18 @@
+[project]
+name = "schoolbusrouteoptimization"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "contextily>=1.7.0",
+    "geopandas>=1.1.2",
+    "ipykernel>=7.2.0",
+    "jupyter>=1.1.1",
+    "matplotlib>=3.10.8",
+    "networkx>=3.6.1",
+    "numpy>=2.4.2",
+    "osmnx>=2.1.0",
+    "shapely>=2.1.2",
+    "tqdm>=4.67.3",
+]

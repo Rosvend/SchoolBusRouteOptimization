@@ -24,7 +24,12 @@ nodes_in_bbox = [
     if WEST <= G.nodes[n]["x"] <= EAST and SOUTH <= G.nodes[n]["y"] <= NORTH
 ]
 G2 = G.subgraph(nodes_in_bbox).copy()
-print(f"  Cropped graph: {G2.number_of_nodes()} nodes, {G2.number_of_edges()} edges")
+
+# Keep only the largest strongly connected component so every node
+# can reach every other node (required for the distance matrix).
+largest_scc = max(nx.strongly_connected_components(G2), key=len)
+G2 = G2.subgraph(largest_scc).copy()
+print(f"  Cropped graph (largest SCC): {G2.number_of_nodes()} nodes, {G2.number_of_edges()} edges")
 
 # 2. Sample child locations + find nearest node to origin 
 all_nodes = list(G2.nodes)

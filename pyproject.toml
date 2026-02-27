@@ -1,0 +1,15 @@
+[project]
+name = "school-bus-route-optimization"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "contextily>=1.7.0",
+    "kmedoids>=0.5.3",
+    "matplotlib>=3.10.8",
+    "networkx>=3.6.1",
+    "numpy>=2.4.2",
+    "osmnx>=2.1.0",
+    "tqdm>=4.67.3",
+]

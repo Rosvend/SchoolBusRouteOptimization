@@ -3,7 +3,7 @@ import kmedoids
 import matplotlib.pyplot as plt
 import contextily as ctx
 
-# ── Load scenario data ────────────────────────────────────────────────
+# Load scenario data
 data = np.load("scenario_data.npz")
 dist_matrix = data["dist_matrix"]
 x = data["x"]
@@ -13,7 +13,7 @@ bus_capacity = int(data["bus_capacity"])
 
 n_children = dist_matrix.shape[0] - 1  # last row/col is the school
 
-# Extract the children-only sub-matrix (exclude the origin/school)
+# Extract the children-only sub-matrix (exclude the origin/school)s
 children_idx = [i for i in range(dist_matrix.shape[0]) if i != origin_idx]
 D = dist_matrix[np.ix_(children_idx, children_idx)]
 x_children = x[children_idx]
@@ -22,7 +22,7 @@ y_children = y[children_idx]
 # Symmetrise (Dijkstra on a directed graph may give asymmetric costs)
 D = (D + D.T) / 2.0
 
-# determine k from bus capacity 
+# determine k from bus capacity     
 k = int(np.ceil(n_children / bus_capacity))
 print(f"Children: {n_children}  |  Bus capacity: {bus_capacity}  |  Clusters (k): {k}")
 

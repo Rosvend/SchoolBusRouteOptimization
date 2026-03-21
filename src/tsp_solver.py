@@ -130,6 +130,16 @@ for c in range(k):
     ry = [y[i] for i in route]
     ax.plot(rx, ry, color=color, linewidth=1.2, alpha=0.7)
 
+    # Number each stop along the route (skip depot at start and end)
+    for stop_num, node_idx in enumerate(route):
+        ax.annotate(
+            str(stop_num),
+            (x[node_idx], y[node_idx]),
+            fontsize=5, fontweight="bold", color=color,
+            ha="center", va="bottom",
+            xytext=(0, 3), textcoords="offset points",
+        )
+
     # Highlight medoid
     mi = medoids[c]
     ax.scatter(

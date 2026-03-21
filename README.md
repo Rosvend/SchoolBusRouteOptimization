@@ -1,4 +1,4 @@
-# School Bus Route Optimization
+# Capacitated School Bus Routing via Clustering and Network-Based Optimization
 
 ## Overview
 
@@ -135,7 +135,7 @@ $$
 
 ## Repository Structure
 
-.
+```bash
 ├── src/
 │   ├── data_generation.py
 │   ├── clustering.py
@@ -144,7 +144,8 @@ $$
 ├── scenario_data.npz
 ├── clustering_result.npz
 ├── tsp_result.npz
-└── cache/
+└── cache
+```
 
 ## Requirements
 

@@ -1,16 +1,20 @@
 [project]
-name = "school-bus-route-optimization"
+name = "school-bus-routing"
 version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
-requires-python = ">=3.14"
+description = "Capacitated school bus routing via clustering and TSP — Valle de Aburrá"
+requires-python = ">=3.11"
 dependencies = [
-    "contextily>=1.7.0",
-    "kmedoids>=0.5.3",
-    "matplotlib>=3.10.8",
-    "networkx>=3.6.1",
-    "numpy>=2.4.2",
-    "ortools>=9.15.6755",
-    "osmnx>=2.1.0",
-    "tqdm>=4.67.3",
+    "numpy",
+    "networkx",
+    "osmnx",
+    "kmedoids",
+    "ortools",
+    "shapely",
+    "matplotlib",
+    "contextily",
+    "tqdm",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

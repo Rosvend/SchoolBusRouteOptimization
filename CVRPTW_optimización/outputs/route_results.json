@@ -1,0 +1,1250 @@
+{
+  "config": {
+    "n_children": 200,
+    "bus_capacity": 20,
+    "max_route_minutes": 75,
+    "boarding_seconds": 90,
+    "span_balance_coeff": 300
+  },
+  "summary": {
+    "total_buses": 21,
+    "total_distance_km": 447.98,
+    "cumulative_min": 932.2,
+    "worst_route_min": 73.08,
+    "active_zones": 20
+  },
+  "zone_labels": [
+    20,
+    16,
+    20,
+    17,
+    20,
+    2,
+    11,
+    18,
+    20,
+    11,
+    5,
+    1,
+    16,
+    20,
+    8,
+    18,
+    20,
+    11,
+    0,
+    20,
+    20,
+    6,
+    8,
+    4,
+    2,
+    5,
+    20,
+    16,
+    20,
+    16,
+    16,
+    6,
+    20,
+    4,
+    0,
+    20,
+    20,
+    11,
+    14,
+    2,
+    14,
+    20,
+    14,
+    14,
+    0,
+    10,
+    9,
+    16,
+    1,
+    6,
+    20,
+    14,
+    20,
+    9,
+    3,
+    0,
+    20,
+    11,
+    12,
+    3,
+    11,
+    8,
+    15,
+    8,
+    2,
+    17,
+    20,
+    5,
+    20,
+    20,
+    6,
+    2,
+    11,
+    4,
+    15,
+    3,
+    20,
+    20,
+    15,
+    15,
+    2,
+    10,
+    12,
+    6,
+    2,
+    15,
+    18,
+    15,
+    15,
+    0,
+    12,
+    20,
+    12,
+    12,
+    15,
+    12,
+    6,
+    13,
+    0,
+    16,
+    3,
+    14,
+    20,
+    6,
+    20,
+    20,
+    18,
+    5,
+    8,
+    16,
+    6,
+    6,
+    12,
+    18,
+    3,
+    10,
+    19,
+    20,
+    18,
+    13,
+    6,
+    20,
+    8,
+    20,
+    5,
+    5,
+    2,
+    3,
+    3,
+    16,
+    4,
+    20,
+    17,
+    3,
+    0,
+    2,
+    12,
+    20,
+    4,
+    16,
+    20,
+    2,
+    18,
+    9,
+    12,
+    20,
+    6,
+    18,
+    14,
+    15,
+    3,
+    10,
+    15,
+    18,
+    12,
+    20,
+    2,
+    16,
+    5,
+    13,
+    16,
+    15,
+    8,
+    10,
+    16,
+    11,
+    5,
+    20,
+    2,
+    1,
+    3,
+    16,
+    3,
+    18,
+    6,
+    3,
+    0,
+    1,
+    1,
+    15,
+    9,
+    6,
+    16,
+    16,
+    4,
+    5,
+    15,
+    10,
+    8,
+    16,
+    1,
+    2,
+    16,
+    17,
+    16,
+    20,
+    20,
+    13,
+    12,
+    11,
+    -1
+  ],
+  "zones_meta": [
+    {
+      "idx": 0,
+      "name": "Comuna 1 - Popular",
+      "municipality": "Medellín",
+      "centroid": [
+        -75.5442028508937,
+        6.293556310781918
+      ]
+    },
+    {
+      "idx": 1,
+      "name": "Comuna 2 - Santa Cruz",
+      "municipality": "Medellín",
+      "centroid": [
+        -75.55452870466173,
+        6.298347475126901
+      ]
+    },
+    {
+      "idx": 2,
+      "name": "Comuna 3 - Manrique",
+      "municipality": "Medellín",
+      "centroid": [
+        -75.54529630604661,
+        6.273098188894361
+      ]
+    },
+    {
+      "idx": 3,
+      "name": "Comuna 4 - Aranjuez",
+      "municipality": "Medellín",
+      "centroid": [
+        -75.56155872189439,
+        6.276128962880601
+      ]
+    },
+    {
+      "idx": 4,
+      "name": "Comuna 5 - Castilla",
+      "municipality": "Medellín",
+      "centroid": [
+        -75.5686598679055,
+        6.2922484358877515
+      ]
+    },
+    {
+      "idx": 5,
+      "name": "Comuna 6 - Doce de Octubre",
+      "municipality": "Medellín",
+      "centroid": [
+        -75.57918043371681,
+        6.299240221675888
+      ]
+    },
+    {
+      "idx": 6,
+      "name": "Comuna 7 - Robledo",
+      "municipality": "Medellín",
+      "centroid": [
+        -75.59429257321162,
+        6.278087028768232
+      ]
+    },
+    {
+      "idx": 7,
+      "name": "Comuna 8 - Villa Hermosa",
+      "municipality": "Medellín",
+      "centroid": [
+        -75.54233345869939,
+        6.246478946541456
+      ]
+    },
+    {
+      "idx": 8,
+      "name": "Comuna 9 - Buenos Aires",
+      "municipality": "Medellín",
+      "centroid": [
+        -75.552171102063,
+        6.230122935986493
+      ]
+    },
+    {
+      "idx": 9,
+      "name": "Comuna 10 - La Candelaria",
+      "municipality": "Medellín",
+      "centroid": [
+        -75.56806678656788,
+        6.247667818819721
+      ]
+    },
+    {
+      "idx": 10,
+      "name": "Comuna 11 - Laureles-Estadio",
+      "municipality": "Medellín",
+      "centroid": [
+        -75.59159413926581,
+        6.250434958970201
+      ]
+    },
+    {
+      "idx": 11,
+      "name": "Comuna 12 - La América",
+      "municipality": "Medellín",
+      "centroid": [
+        -75.60554715014555,
+        6.254467385688101
+      ]
+    },
+    {
+      "idx": 12,
+      "name": "Comuna 13 - San Javier",
+      "municipality": "Medellín",
+      "centroid": [
+        -75.61805979228912,
+        6.258263671385182
+      ]
+    },
+    {
+      "idx": 13,
+      "name": "Comuna 14 - El Poblado",
+      "municipality": "Medellín",
+      "centroid": [
+        -75.5661420663284,
+        6.200598274727383
+      ]
+    },
+    {
+      "idx": 14,
+      "name": "Comuna 15 - Guayabal",
+      "municipality": "Medellín",
+      "centroid": [
+        -75.58682495505603,
+        6.212613639934469
+      ]
+    },
+    {
+      "idx": 15,
+      "name": "Comuna 16 - Belén",
+      "municipality": "Medellín",
+      "centroid": [
+        -75.6005037570139,
+        6.225128178730437
+      ]
+    },
+    {
+      "idx": 16,
+      "name": "Itagüí",
+      "municipality": "Itagüí",
+      "centroid": [
+        -75.61181865650738,
+        6.17621913397519
+      ]
+    },
+    {
+      "idx": 17,
+      "name": "Sabaneta",
+      "municipality": "Sabaneta",
+      "centroid": [
+        -75.61527635904038,
+        6.149383174683961
+      ]
+    },
+    {
+      "idx": 18,
+      "name": "Envigado",
+      "municipality": "Envigado",
+      "centroid": [
+        -75.58211223803576,
+        6.16668701780662
+      ]
+    },
+    {
+      "idx": 19,
+      "name": "La Estrella",
+      "municipality": "La Estrella",
+      "centroid": [
+        -75.63688246766324,
+        6.143571332199902
+      ]
+    },
+    {
+      "idx": 20,
+      "name": "Bello",
+      "municipality": "Bello",
+      "centroid": [
+        -75.55535322722997,
+        6.33359454251053
+      ]
+    }
+  ],
+  "results": [
+    {
+      "zone_idx": 0,
+      "zone_name": "Comuna 1 - Popular",
+      "municipality": "Medellín",
+      "n_children": 8,
+      "k_buses": 1,
+      "scenario_indices": [
+        18,
+        34,
+        44,
+        55,
+        89,
+        98,
+        134,
+        176
+      ],
+      "routes": [
+        [
+          55,
+          18,
+          176,
+          89,
+          134,
+          34,
+          98,
+          44
+        ]
+      ],
+      "route_distances_m": [
+        24295.2
+      ],
+      "route_times_min": [
+        47.89
+      ],
+      "total_distance_m": 24295.2,
+      "total_time_min": 47.9,
+      "max_route_min": 47.89
+    },
+    {
+      "zone_idx": 1,
+      "zone_name": "Comuna 2 - Santa Cruz",
+      "municipality": "Medellín",
+      "n_children": 6,
+      "k_buses": 1,
+      "scenario_indices": [
+        11,
+        48,
+        169,
+        177,
+        178,
+        190
+      ],
+      "routes": [
+        [
+          178,
+          11,
+          190,
+          169,
+          177,
+          48
+        ]
+      ],
+      "route_distances_m": [
+        18412.4
+      ],
+      "route_times_min": [
+        34.75
+      ],
+      "total_distance_m": 18412.4,
+      "total_time_min": 34.8,
+      "max_route_min": 34.75
+    },
+    {
+      "zone_idx": 2,
+      "zone_name": "Comuna 3 - Manrique",
+      "municipality": "Medellín",
+      "n_children": 13,
+      "k_buses": 1,
+      "scenario_indices": [
+        5,
+        24,
+        39,
+        64,
+        71,
+        80,
+        84,
+        126,
+        135,
+        141,
+        156,
+        168,
+        191
+      ],
+      "routes": [
+        [
+          84,
+          64,
+          126,
+          156,
+          80,
+          24,
+          5,
+          71,
+          141,
+          168,
+          39,
+          135,
+          191
+        ]
+      ],
+      "route_distances_m": [
+        22764.3
+      ],
+      "route_times_min": [
+        56.44
+      ],
+      "total_distance_m": 22764.3,
+      "total_time_min": 56.4,
+      "max_route_min": 56.44
+    },
+    {
+      "zone_idx": 3,
+      "zone_name": "Comuna 4 - Aranjuez",
+      "municipality": "Medellín",
+      "n_children": 12,
+      "k_buses": 1,
+      "scenario_indices": [
+        54,
+        59,
+        75,
+        100,
+        114,
+        127,
+        128,
+        133,
+        150,
+        170,
+        172,
+        175
+      ],
+      "routes": [
+        [
+          175,
+          75,
+          114,
+          133,
+          59,
+          54,
+          170,
+          150,
+          128,
+          100,
+          172,
+          127
+        ]
+      ],
+      "route_distances_m": [
+        17504.3
+      ],
+      "route_times_min": [
+        44.28
+      ],
+      "total_distance_m": 17504.3,
+      "total_time_min": 44.3,
+      "max_route_min": 44.28
+    },
+    {
+      "zone_idx": 4,
+      "zone_name": "Comuna 5 - Castilla",
+      "municipality": "Medellín",
+      "n_children": 6,
+      "k_buses": 1,
+      "scenario_indices": [
+        23,
+        33,
+        73,
+        130,
+        138,
+        184
+      ],
+      "routes": [
+        [
+          184,
+          33,
+          130,
+          73,
+          138,
+          23
+        ]
+      ],
+      "route_distances_m": [
+        18955.6
+      ],
+      "route_times_min": [
+        35.57
+      ],
+      "total_distance_m": 18955.6,
+      "total_time_min": 35.6,
+      "max_route_min": 35.57
+    },
+    {
+      "zone_idx": 5,
+      "zone_name": "Comuna 6 - Doce de Octubre",
+      "municipality": "Medellín",
+      "n_children": 9,
+      "k_buses": 1,
+      "scenario_indices": [
+        10,
+        25,
+        67,
+        107,
+        124,
+        125,
+        158,
+        166,
+        185
+      ],
+      "routes": [
+        [
+          158,
+          67,
+          185,
+          25,
+          107,
+          10,
+          166,
+          125,
+          124
+        ]
+      ],
+      "route_distances_m": [
+        18811.1
+      ],
+      "route_times_min": [
+        41.67
+      ],
+      "total_distance_m": 18811.1,
+      "total_time_min": 41.7,
+      "max_route_min": 41.67
+    },
+    {
+      "zone_idx": 6,
+      "zone_name": "Comuna 7 - Robledo",
+      "municipality": "Medellín",
+      "n_children": 13,
+      "k_buses": 1,
+      "scenario_indices": [
+        21,
+        31,
+        49,
+        70,
+        83,
+        96,
+        103,
+        110,
+        111,
+        120,
+        146,
+        174,
+        181
+      ],
+      "routes": [
+        [
+          181,
+          21,
+          49,
+          70,
+          83,
+          110,
+          111,
+          174,
+          96,
+          103,
+          31,
+          146,
+          120
+        ]
+      ],
+      "route_distances_m": [
+        16097.3
+      ],
+      "route_times_min": [
+        45.07
+      ],
+      "total_distance_m": 16097.3,
+      "total_time_min": 45.1,
+      "max_route_min": 45.07
+    },
+    {
+      "zone_idx": 8,
+      "zone_name": "Comuna 9 - Buenos Aires",
+      "municipality": "Medellín",
+      "n_children": 8,
+      "k_buses": 1,
+      "scenario_indices": [
+        14,
+        22,
+        61,
+        63,
+        108,
+        122,
+        162,
+        188
+      ],
+      "routes": [
+        [
+          162,
+          188,
+          63,
+          122,
+          108,
+          61,
+          22,
+          14
+        ]
+      ],
+      "route_distances_m": [
+        17935.4
+      ],
+      "route_times_min": [
+        43.07
+      ],
+      "total_distance_m": 17935.4,
+      "total_time_min": 43.1,
+      "max_route_min": 43.07
+    },
+    {
+      "zone_idx": 9,
+      "zone_name": "Comuna 10 - La Candelaria",
+      "municipality": "Medellín",
+      "n_children": 4,
+      "k_buses": 1,
+      "scenario_indices": [
+        46,
+        53,
+        143,
+        180
+      ],
+      "routes": [
+        [
+          46,
+          180,
+          53,
+          143
+        ]
+      ],
+      "route_distances_m": [
+        9751.5
+      ],
+      "route_times_min": [
+        20.13
+      ],
+      "total_distance_m": 9751.5,
+      "total_time_min": 20.1,
+      "max_route_min": 20.13
+    },
+    {
+      "zone_idx": 10,
+      "zone_name": "Comuna 11 - Laureles-Estadio",
+      "municipality": "Medellín",
+      "n_children": 6,
+      "k_buses": 1,
+      "scenario_indices": [
+        45,
+        81,
+        115,
+        151,
+        163,
+        187
+      ],
+      "routes": [
+        [
+          163,
+          151,
+          115,
+          45,
+          187,
+          81
+        ]
+      ],
+      "route_distances_m": [
+        9369.9
+      ],
+      "route_times_min": [
+        23.22
+      ],
+      "total_distance_m": 9369.9,
+      "total_time_min": 23.2,
+      "max_route_min": 23.22
+    },
+    {
+      "zone_idx": 11,
+      "zone_name": "Comuna 12 - La América",
+      "municipality": "Medellín",
+      "n_children": 9,
+      "k_buses": 1,
+      "scenario_indices": [
+        6,
+        9,
+        17,
+        37,
+        57,
+        60,
+        72,
+        165,
+        199
+      ],
+      "routes": [
+        [
+          72,
+          17,
+          165,
+          199,
+          6,
+          9,
+          37,
+          57,
+          60
+        ]
+      ],
+      "route_distances_m": [
+        12479.0
+      ],
+      "route_times_min": [
+        34.67
+      ],
+      "total_distance_m": 12479.0,
+      "total_time_min": 34.7,
+      "max_route_min": 34.67
+    },
+    {
+      "zone_idx": 12,
+      "zone_name": "Comuna 13 - San Javier",
+      "municipality": "Medellín",
+      "n_children": 11,
+      "k_buses": 1,
+      "scenario_indices": [
+        58,
+        82,
+        90,
+        92,
+        93,
+        95,
+        112,
+        136,
+        144,
+        154,
+        198
+      ],
+      "routes": [
+        [
+          95,
+          92,
+          112,
+          58,
+          136,
+          154,
+          90,
+          144,
+          93,
+          82,
+          198
+        ]
+      ],
+      "route_distances_m": [
+        19028.2
+      ],
+      "route_times_min": [
+        48.83
+      ],
+      "total_distance_m": 19028.2,
+      "total_time_min": 48.8,
+      "max_route_min": 48.83
+    },
+    {
+      "zone_idx": 13,
+      "zone_name": "Comuna 14 - El Poblado",
+      "municipality": "Medellín",
+      "n_children": 4,
+      "k_buses": 1,
+      "scenario_indices": [
+        97,
+        119,
+        159,
+        197
+      ],
+      "routes": [
+        [
+          119,
+          97,
+          159,
+          197
+        ]
+      ],
+      "route_distances_m": [
+        22789.5
+      ],
+      "route_times_min": [
+        37.51
+      ],
+      "total_distance_m": 22789.5,
+      "total_time_min": 37.5,
+      "max_route_min": 37.51
+    },
+    {
+      "zone_idx": 14,
+      "zone_name": "Comuna 15 - Guayabal",
+      "municipality": "Medellín",
+      "n_children": 7,
+      "k_buses": 1,
+      "scenario_indices": [
+        38,
+        40,
+        42,
+        43,
+        51,
+        101,
+        148
+      ],
+      "routes": [
+        [
+          148,
+          42,
+          51,
+          101,
+          38,
+          43,
+          40
+        ]
+      ],
+      "route_distances_m": [
+        15838.6
+      ],
+      "route_times_min": [
+        34.62
+      ],
+      "total_distance_m": 15838.6,
+      "total_time_min": 34.6,
+      "max_route_min": 34.62
+    },
+    {
+      "zone_idx": 15,
+      "zone_name": "Comuna 16 - Belén",
+      "municipality": "Medellín",
+      "n_children": 13,
+      "k_buses": 1,
+      "scenario_indices": [
+        62,
+        74,
+        78,
+        79,
+        85,
+        87,
+        88,
+        94,
+        149,
+        152,
+        161,
+        179,
+        186
+      ],
+      "routes": [
+        [
+          79,
+          85,
+          179,
+          78,
+          149,
+          87,
+          88,
+          152,
+          62,
+          74,
+          161,
+          186,
+          94
+        ]
+      ],
+      "route_distances_m": [
+        12633.7
+      ],
+      "route_times_min": [
+        41.79
+      ],
+      "total_distance_m": 12633.7,
+      "total_time_min": 41.8,
+      "max_route_min": 41.79
+    },
+    {
+      "zone_idx": 16,
+      "zone_name": "Itagüí",
+      "municipality": "Itagüí",
+      "n_children": 19,
+      "k_buses": 1,
+      "scenario_indices": [
+        1,
+        12,
+        27,
+        29,
+        30,
+        47,
+        99,
+        109,
+        129,
+        139,
+        157,
+        160,
+        164,
+        171,
+        182,
+        183,
+        189,
+        192,
+        194
+      ],
+      "routes": [
+        [
+          12,
+          29,
+          164,
+          109,
+          99,
+          160,
+          157,
+          194,
+          182,
+          1,
+          27,
+          47,
+          171,
+          183,
+          192,
+          139,
+          129
+        ]
+      ],
+      "route_distances_m": [
+        32267.3
+      ],
+      "route_times_min": [
+        71.75
+      ],
+      "total_distance_m": 32267.3,
+      "total_time_min": 71.8,
+      "max_route_min": 71.75
+    },
+    {
+      "zone_idx": 17,
+      "zone_name": "Sabaneta",
+      "municipality": "Sabaneta",
+      "n_children": 4,
+      "k_buses": 1,
+      "scenario_indices": [
+        3,
+        65,
+        132,
+        193
+      ],
+      "routes": [
+        [
+          132,
+          65,
+          3,
+          193
+        ]
+      ],
+      "route_distances_m": [
+        32796.2
+      ],
+      "route_times_min": [
+        42.75
+      ],
+      "total_distance_m": 32796.2,
+      "total_time_min": 42.8,
+      "max_route_min": 42.75
+    },
+    {
+      "zone_idx": 18,
+      "zone_name": "Envigado",
+      "municipality": "Envigado",
+      "n_children": 10,
+      "k_buses": 1,
+      "scenario_indices": [
+        7,
+        15,
+        86,
+        106,
+        113,
+        118,
+        142,
+        147,
+        153,
+        173
+      ],
+      "routes": [
+        [
+          7,
+          153,
+          106,
+          113,
+          15,
+          86,
+          118,
+          173,
+          142,
+          147
+        ]
+      ],
+      "route_distances_m": [
+        28438.1
+      ],
+      "route_times_min": [
+        49.97
+      ],
+      "total_distance_m": 28438.1,
+      "total_time_min": 50.0,
+      "max_route_min": 49.97
+    },
+    {
+      "zone_idx": 19,
+      "zone_name": "La Estrella",
+      "municipality": "La Estrella",
+      "n_children": 1,
+      "k_buses": 1,
+      "scenario_indices": [
+        116
+      ],
+      "routes": [
+        [
+          116
+        ]
+      ],
+      "route_distances_m": [
+        29690.9
+      ],
+      "route_times_min": [
+        33.08
+      ],
+      "total_distance_m": 29690.9,
+      "total_time_min": 33.1,
+      "max_route_min": 33.08
+    },
+    {
+      "zone_idx": 20,
+      "zone_name": "Bello",
+      "municipality": "Bello",
+      "n_children": 37,
+      "k_buses": 2,
+      "scenario_indices": [
+        0,
+        2,
+        4,
+        8,
+        13,
+        16,
+        19,
+        20,
+        26,
+        28,
+        32,
+        35,
+        36,
+        41,
+        50,
+        52,
+        56,
+        66,
+        68,
+        69,
+        76,
+        77,
+        91,
+        102,
+        104,
+        105,
+        117,
+        121,
+        123,
+        131,
+        137,
+        140,
+        145,
+        155,
+        167,
+        195,
+        196
+      ],
+      "routes": [
+        [
+          32,
+          69,
+          13,
+          195,
+          121,
+          35,
+          52,
+          26,
+          2,
+          91,
+          123,
+          104,
+          131,
+          145,
+          105,
+          16
+        ],
+        [
+          20,
+          117,
+          167,
+          155,
+          137,
+          77,
+          4,
+          28,
+          102,
+          19,
+          50,
+          36,
+          8,
+          68,
+          56,
+          66,
+          0
+        ]
+      ],
+      "route_distances_m": [
+        32380.0,
+        35742.8
+      ],
+      "route_times_min": [
+        71.85,
+        73.08
+      ],
+      "total_distance_m": 68122.8,
+      "total_time_min": 144.9,
+      "max_route_min": 73.08
+    }
+  ]
+}

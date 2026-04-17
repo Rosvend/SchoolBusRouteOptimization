@@ -279,6 +279,81 @@ def process_zone(z_idx: int, zone: dict,
         "max_route_min":     round(max_min, 2),
     }
 
+# =============================================================================
+# 5.  Zone merging — absorb zones with too few children
+# =============================================================================
+
+def merge_small_zones(zone_labels: np.ndarray,
+                      zones: list[dict],
+                      x: np.ndarray,
+                      y: np.ndarray,
+                      origin_idx: int) -> np.ndarray:
+    """
+    Iteratively merges the smallest zone into its geographically nearest
+    neighbour until every active zone has at least MIN_ZONE_CHILDREN children.
+
+    'Nearest' is measured centroid-to-centroid.
+
+    Returns a new zone_labels array with updated assignments.
+    """
+    labels = zone_labels.copy()
+    threshold = cfg.MIN_ZONE_CHILDREN
+
+    # Build centroid lookup
+    centroids = {i: z["centroid"] for i, z in enumerate(zones)}
+
+    while True:
+        # Count children per zone (exclude depot at origin_idx)
+        counts = {}
+        for i in range(len(x)):
+            if i == origin_idx or labels[i] < 0:
+                continue
+            z = int(labels[i])
+            counts[z] = counts.get(z, 0) + 1
+
+        # Find the zone with fewest children (if below threshold)
+        small = [(z, n) for z, n in counts.items() if n < threshold]
+        if not small:
+            break  # all zones meet the threshold — done
+
+        # Pick the smallest zone
+        victim_idx, victim_count = min(small, key=lambda t: t[1])
+
+        # Find its nearest neighbour zone (by centroid distance)
+        cx, cy = centroids[victim_idx]
+        best_neighbour = min(
+            (z for z in counts if z != victim_idx),
+            key=lambda z: (centroids[z][0] - cx)**2 + (centroids[z][1] - cy)**2,
+            default=None,
+        )
+
+        if best_neighbour is None:
+            break  # only one zone left — nothing to merge into
+
+        # Reassign all children from victim → neighbour
+        labels[labels == victim_idx] = best_neighbour
+        print(f"  Merged zone {zones[victim_idx]['name']!r} "
+              f"({victim_count} children) → {zones[best_neighbour]['name']!r}")
+
+    # Report final counts
+    final_counts = {}
+    for i in range(len(x)):
+        if i == origin_idx or labels[i] < 0:
+            continue
+        z = int(labels[i])
+        final_counts[z] = final_counts.get(z, 0) + 1
+
+    print(f"\n  Active zones after merging: {len(final_counts)}")
+    total_buses = sum(
+        max(1, math.ceil(n / cfg.BUS_CAPACITY))
+        for n in final_counts.values()
+    )
+    print(f"  Estimated total buses: {total_buses}")
+    for z_idx in sorted(final_counts):
+        k_est = max(1, math.ceil(final_counts[z_idx] / cfg.BUS_CAPACITY))
+        print(f"    {zones[z_idx]['name']:<35s}: "
+              f"{final_counts[z_idx]:3d} children → {k_est} bus(es)")
+    return labels
 
 # =============================================================================
 # Main
@@ -298,13 +373,18 @@ def main():
     node_zones  = scenario["node_zones"]
     n_children  = full_time.shape[0] - 1
     print(f"\n  {n_children} children  |  bus capacity {cfg.BUS_CAPACITY}  "
-          f"|  max route {cfg.MAX_ROUTE_MINUTES} min")
+          f"|  max route {cfg.MAX_ROUTE_MINUTES} min  "
+          f"|  min zone size {cfg.MIN_ZONE_CHILDREN}")
 
     print("\nLoading zone polygons …")
     zones = load_zones()
 
     print("\nAssigning children to zones …")
     zone_labels = assign_zones(x, y, origin_idx, zones, node_zones)
+
+    # ── NEW: merge small zones before optimising ──────────────────────────
+    print(f"\nMerging zones with fewer than {cfg.MIN_ZONE_CHILDREN} children …")
+    zone_labels = merge_small_zones(zone_labels, zones, x, y, origin_idx)
 
     print(f"\nOptimising per zone …")
     results = []
@@ -331,18 +411,19 @@ def main():
 
     output = {
         "config": {
-            "n_children":         n_children,
-            "bus_capacity":       cfg.BUS_CAPACITY,
-            "max_route_minutes":  cfg.MAX_ROUTE_MINUTES,
-            "boarding_seconds":   cfg.BOARDING_SECONDS,
-            "span_balance_coeff": cfg.SPAN_BALANCE_COEFF,
+            "n_children":          n_children,
+            "bus_capacity":        cfg.BUS_CAPACITY,
+            "max_route_minutes":   cfg.MAX_ROUTE_MINUTES,
+            "boarding_seconds":    cfg.BOARDING_SECONDS,
+            "span_balance_coeff":  cfg.SPAN_BALANCE_COEFF,
+            "min_zone_children":   cfg.MIN_ZONE_CHILDREN,
         },
         "summary": {
-            "total_buses":       total_buses,
-            "total_distance_km": round(total_km, 2),
-            "cumulative_min":    round(total_min, 1),
-            "worst_route_min":   round(worst_min, 2),
-            "active_zones":      len(results),
+            "total_buses":        total_buses,
+            "total_distance_km":  round(total_km, 2),
+            "cumulative_min":     round(total_min, 1),
+            "worst_route_min":    round(worst_min, 2),
+            "active_zones":       len(results),
         },
         "zone_labels":  zone_labels.tolist(),
         "zones_meta":   [{"idx": i, "name": z["name"],
@@ -357,7 +438,3 @@ def main():
         json.dump(output, f, ensure_ascii=False, indent=2)
     print(f"\n  Saved → {cfg.RESULTS_JSON}")
     print("Stage 2 complete.\n")
-
-
-if __name__ == "__main__":
-    main()

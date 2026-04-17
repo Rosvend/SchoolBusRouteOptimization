@@ -30,6 +30,7 @@ SCHOOL_NAME = "UPB"
 # ── Scenario ──────────────────────────────────────────────────────────────
 N_CHILDREN   = 200   # total children across the entire Valle
 BUS_CAPACITY = 20    # max children per bus
+MIN_ZONE_CHILDREN = 15  
 
 # ── DANE 2026 population estimates for non-Medellín municipalities ────────
 MUNICIPALITY_POPULATION = {

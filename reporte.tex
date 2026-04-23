@@ -1,0 +1,269 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{float}
+
+\geometry{margin=2.5cm}
+
+\title{\textbf{Optimizaci\'on de Rutas de Buses Escolares en Medell\'in}\\[6pt]
+\large Comparaci\'on de Enfoques Heur\'isticos sobre Red Vial Real}
+\author{Roy Sandoval \and Mariana \and Roberto C.\ Hinc\'apie \and Naomi \and Susana Toro}
+\date{2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Este trabajo aborda el problema de ruteo de buses escolares con capacidad
+en el \'area urbana de Medell\'in, Colombia.
+Se propone una arquitectura de tres etapas basada en datos reales de la red vial:
+generaci\'on del escenario con OpenStreetMap, clustering capacitado de estudiantes
+y optimizaci\'on de rutas por cl\'uster.
+Se implementan y comparan dos enfoques:
+(1)~\textbf{K-medoids + Min-Cost Flow + TSP} (OR-Tools) y
+(2)~\textbf{Set Cover via Programaci\'on Entera ILP} (CBC/PuLP).
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+%-----------------------------------------------------------------------
+\section{Introducci\'on}
+
+El \textit{School Bus Routing Problem} (SBSRP) es una variante del Problema
+de Ruteo de Veh\'iculos Capacitado (CVRP) donde el objetivo es planificar
+rutas de buses para recoger estudiantes minimizando el costo total de
+operaci\'on sujeto a la capacidad de cada bus.
+
+En entornos urbanos, las distancias entre paradas dependen de la topolog\'ia
+de la red vial.  Este trabajo usa datos reales de Medell\'in v\'ia OSMnx
+para construir una matriz de distancias representativa del problema.
+
+%-----------------------------------------------------------------------
+\section{Descripci\'on del Problema}
+
+\subsection{Instancia}
+
+Dado un grafo dirigido ponderado $G=(V,E,w)$ que representa la red vial de Medell\'in:
+\begin{itemize}
+  \item $n=200$ estudiantes muestreados aleatoriamente sobre $V$ (semilla 42).
+  \item Dep\'osito (colegio) $o\in V$ con coordenadas fijas.
+  \item Capacidad m\'axima $C=20$ estudiantes por bus.
+\end{itemize}
+
+\subsection{Distancias por red vial}
+
+Para cada par de nodos $i,j \in J\cup\{o\}$, la distancia real es el camino m\'as corto en $G$:
+\begin{equation}
+  d_{ij} = \min_{p\in\mathcal{P}(i,j)} \sum_{e\in p} w_e
+\end{equation}
+La matriz $D\in\mathbb{R}^{(n+1)\times(n+1)}$ resultante es generalmente asim\'etrica.
+
+\subsection{Cota inferior de buses}
+
+\begin{equation}
+  k_{\min} = \left\lceil \frac{n}{C} \right\rceil = \left\lceil \frac{200}{20} \right\rceil = 10
+\end{equation}
+
+%-----------------------------------------------------------------------
+\section{Generaci\'on del Escenario (\texttt{data\_generation.py})}
+
+\begin{enumerate}
+  \item Descarga de la red vial de Medell\'in con OSMnx;
+        recorte a la regi\'on $6.182$--$6.312$\textdegree\,N,
+        $75.531$--$75.626$\textdegree\,W.
+  \item Extracci\'on de la componente fuertemente conexa (SCC) m\'as grande
+        para garantizar alcanzabilidad entre todos los nodos.
+  \item Muestreo de $n$ nodos de estudiantes y localizaci\'on del colegio.
+  \item C\'alculo de la matriz de distancias mediante Dijkstra
+        ($O(n|E|\log|V|)$).
+\end{enumerate}
+
+Para la fase de clustering, las distancias se simetrizan:
+\begin{equation}
+  D^{\mathrm{sym}}_{ij} = \frac{d_{ij}+d_{ji}}{2}
+\end{equation}
+
+%-----------------------------------------------------------------------
+\section{Enfoque 1: K-medoids con Min-Cost Flow y TSP}
+
+\subsection{Clustering capacitado}
+
+El algoritmo itera entre dos fases hasta convergencia:
+
+\paragraph{Asignaci\'on por flujo de costo m\'inimo.}
+Dado el conjunto de medoides $M = \{m_1, \ldots, m_k\}$:
+\begin{align}
+  \min \quad & \sum_{i=1}^{n}\sum_{c=1}^{k} D^{\mathrm{sym}}_{i,m_c}\,x_{ic}
+    \label{eq:km_obj}\\
+  \text{s.t.}\quad
+  & \sum_{c=1}^{k} x_{ic} = 1 \quad\forall i\in J \label{eq:km_assign}\\
+  & \sum_{i=1}^{n} x_{ic} \leq C \quad\forall c \label{eq:km_cap}\\
+  & x_{ic}\in\{0,1\} \label{eq:km_bin}
+\end{align}
+Este problema es equivalente a un flujo de costo m\'inimo y se resuelve en tiempo polinomial.
+
+\paragraph{Actualizaci\'on de medoide.}
+Para cada cl\'uster $S_c = \{i : x_{ic}=1\}$:
+\begin{equation}
+  m_c \leftarrow \arg\min_{h\in S_c}\sum_{i\in S_c} D^{\mathrm{sym}}_{ih}
+\end{equation}
+
+\subsection{Solver TSP por cl\'uster (\texttt{tsp\_solver.py})}
+
+Para cada cl\'uster se define $V_c = S_c\cup\{o\}$ y se resuelve el TSP de
+circuito cerrado con dep\'osito en $o$ usando OR-Tools
+(\texttt{PATH\_CHEAPEST\_ARC} + \texttt{GUIDED\_LOCAL\_SEARCH}, l\'imite 5\,s):
+\begin{equation}
+  L_c = \min_{\sigma\in\mathcal{S}(S_c)}
+        \left[ d_{o,\sigma_1}
+             + \sum_{t=1}^{|S_c|-1} d_{\sigma_t,\sigma_{t+1}}
+             + d_{\sigma_{|S_c|},o} \right]
+\end{equation}
+Distancia total de la flota: $L_{\mathrm{total}} = \sum_{c=1}^{k} L_c$.
+
+%-----------------------------------------------------------------------
+\section{Enfoque 2: Set Cover via Programaci\'on Entera}
+
+\subsection{Pool de rutas candidatas}
+
+Para cada estudiante $i\in J$ como centro, se construye una ruta greedy
+con sus $C-1$ vecinos m\'as cercanos seg\'un $D^{\mathrm{sym}}$:
+\begin{equation}
+  r_i = \{i\}\cup
+        \operatorname{top\text{-}(C-1)}\bigl\{j\in J\setminus\{i\}:
+        D^{\mathrm{sym}}_{ij}\bigr\}
+\end{equation}
+El pool $\mathcal{R}=\{r_i\}_{i\in J}$ (sin duplicados) contiene
+$m\leq n$ rutas con $|r_j|\leq C$.
+
+\subsection{Formulaci\'on ILP}
+
+Sea $x_j\in\{0,1\}$ la variable de selecci\'on de la ruta $j$:
+\begin{align}
+  \min \quad & \sum_{j=1}^{m} x_j \label{eq:sc_obj}\\
+  \text{s.t.}\quad
+  & \sum_{j:\,i\in r_j} x_j \geq 1 \quad\forall i\in J \label{eq:sc_cover}\\
+  & x_j\in\{0,1\} \label{eq:sc_bin}
+\end{align}
+La restricci\'on~(\ref{eq:sc_cover}) garantiza que cada estudiante sea recogido
+por al menos un bus.  El objetivo~(\ref{eq:sc_obj}) minimiza directamente el
+n\'umero de buses.  Se resuelve con el solver CBC (PuLP) a optimalidad garantizada.
+
+\subsection{Distancia de las rutas seleccionadas}
+
+La distancia de cada ruta se aproxima con la heur\'istica del vecino m\'as
+cercano (NN) partiendo del colegio $o$:
+\begin{equation}
+  \hat{L}_c = d_{o,\pi_1}
+            + \sum_{t=1}^{|S_c|-1} d_{\pi_t,\pi_{t+1}}
+            + d_{\pi_{|S_c|},o}
+\end{equation}
+donde $\pi$ es la permutaci\'on greedy NN.
+
+%-----------------------------------------------------------------------
+\section{Resultados}
+
+\begin{table}[H]
+  \centering
+  \caption{Comparaci\'on de m\'etricas entre los dos enfoques
+           (200 estudiantes, $C=20$, semilla~42).}
+  \label{tab:comp}
+  \begin{tabular}{lcc}
+    \toprule
+    \textbf{M\'etrica} & \textbf{K-medoids + TSP} & \textbf{Set Cover ILP}\\
+    \midrule
+    Buses utilizados         & \textit{pend.} & \textit{pend.}\\
+    Distancia total (km)     & \textit{pend.} & \textit{pend.}\\
+    Distancia media/bus (km) & \textit{pend.} & \textit{pend.}\\
+    Tama\~no m\'in.\ (est.)  & \textit{pend.} & \textit{pend.}\\
+    Tama\~no m\'ax.\ (est.)  & \textit{pend.} & \textit{pend.}\\
+    Tama\~no promedio (est.) & \textit{pend.} & \textit{pend.}\\
+    \bottomrule
+  \end{tabular}\\[4pt]
+  \small\textit{Completar con los valores de \texttt{src/comparacion.ipynb}
+  tras ejecutar la pipeline completa.}
+\end{table}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{comparacion_sizes.png}
+  \caption{Distribuci\'on del n\'umero de estudiantes por bus en cada enfoque.
+           La l\'inea roja indica la capacidad m\'axima $C=20$.}
+  \label{fig:sizes}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{comparacion_mapa.png}
+  \caption{Asignaci\'on geogr\'afica de estudiantes a buses sobre el mapa de
+           Medell\'in.  Cada color representa un bus distinto;
+           la estrella roja es el colegio (dep\'osito).}
+  \label{fig:maps}
+\end{figure}
+
+\subsection{Discusi\'on}
+
+El enfoque \textbf{K-medoids + TSP} fija $k=k_{\min}$ antes de optimizar
+y produce tours de alta calidad gracias a OR-Tools.
+El enfoque \textbf{Set Cover ILP} aborda directamente el objetivo operacional
+de minimizar la flota: la soluci\'on de cobertura es \'optima para el pool
+generado, aunque los tours individuales son aproximados (heur\'istica NN).
+
+%-----------------------------------------------------------------------
+\section{Conclusiones}
+
+\begin{itemize}
+  \item Las distancias reales por red vial difieren significativamente de la
+        distancia euclideana, lo que justifica el uso de OSMnx y Dijkstra.
+  \item K-medoids + TSP produce tours de alta calidad con n\'umero de buses
+        predeterminado por $k_{\min}$.
+  \item Set Cover ILP minimiza directamente la flota con cobertura garantizada,
+        a costa de tours aproximados.
+  \item Ambos enfoques respetan estrictamente la capacidad $C=20$.
+\end{itemize}
+
+Como trabajo futuro se propone: combinar ambas etapas en un modelo unificado,
+incorporar ventanas de tiempo (CVRPTW) y escalar a instancias con m\'ultiples colegios.
+
+%-----------------------------------------------------------------------
+\bibliographystyle{plain}
+\begin{thebibliography}{9}
+
+\bibitem{osmnx}
+Boeing, G.\ (2017).
+OSMnx: New methods for acquiring, constructing, analyzing, and visualizing
+complex street networks.
+\textit{Computers, Environment and Urban Systems}, 65, 126--139.
+
+\bibitem{kmedoids}
+Schubert, E.\ \& Rousseeuw, P.J.\ (2019).
+Faster k-Medoids Clustering: Improving the PAM, CLARA, and CLARANS Algorithms.
+\textit{SISAP 2019}, LNCS~11807.
+
+\bibitem{ortools}
+Google OR-Tools (2023).
+\textit{Vehicle Routing}.
+\url{https://developers.google.com/optimization/routing}
+
+\bibitem{schittekat}
+Schittekat, P., Kinable, J., Sorensen, K., Sevaux, M., Spieksma, F.,
+\& Springael, J.\ (2013).
+A metaheuristic for the school bus routing problem with bus stop selection.
+\textit{European Journal of Operational Research}, 229(2), 518--528.
+
+\bibitem{pulp}
+Mitchell, S., OSullivan, M., \& Dunning, I.\ (2011).
+PuLP: A Linear Programming Toolkit for Python.
+The University of Auckland.
+
+\end{thebibliography}
+
+\end{document}

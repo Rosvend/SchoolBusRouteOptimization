@@ -1,0 +1,65 @@
+\documentclass[10pt,twocolumn]{article}
+
+\usepackage[T1]{fontenc} % Better handling of accented characters like í
+\usepackage[utf8]{inputenc}
+\usepackage[spanish,english]{babel} 
+\usepackage{xcolor}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{geometry}
+\geometry{margin=2cm}
+
+\title{Capacitated School Bus Routing via Clustering and Network-Based Optimization \\ 
+\large Enrutamiento Capacitado de Transporte Escolar mediante Clustering y Optimización Basada en Redes en Medellín}
+
+\author{Susana Toro Castaño, Roberto Hincapié, Roy Sandoval, Mariana Arbelaez \\
+\small Ingeniería en Ciencia de Datos, Universidad Pontificia Bolivariana, 2026}
+
+\date{} 
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This project presents a heuristic methodology for solving the School Bus Routing Problem using real road-network data from Medellín, Colombia.
+The proposed approach integrates graphs extracted from OpenStreetMap, capacitated clustering using k-medoids with minimum-cost flow assignment, and route optimization through Google OR-Tools.
+The system models a single school as the main depot and assigns student stops to buses under capacity constraints.
+Distances are computed over the actual road network using shortest paths, after which students are grouped while respecting vehicle capacities, and finally a closed route is optimized for each bus using a Traveling Salesman Problem (TSP)-style formulation.
+The methodology generates feasible and efficient routes while minimizing the total fleet distance in a realistic urban transportation environment.
+\end{abstract}
+
+% I REMOVED THE EXTRA \begin{document} AND \maketitle FROM HERE
+
+\section{INTRODUCCIÓN}
+La planificación de rutas escolares constituye un problema complejo de optimización...
+
+% ... [Rest of your sections remain the same] ...
+
+\section{IMPLEMENTACIÓN}
+
+El proyecto fue desarrollado en Python utilizando las siguientes librerías:
+
+\begin{itemize}
+    \item \textbf{NumPy} para operaciones matriciales
+    \item \textbf{NetworkX} para manejo de grafos
+    \item \textbf{OSMNX} para integración con OpenStreetMap
+    \item \textbf{kmedoids} para clustering
+    \item \textbf{Google OR-Tools} para optimización de rutas
+    \item \textbf{Matplotlib} para visualización
+    \item \textbf{Contextily} para renderización de mapas
+\end{itemize}
+
+La estructura principal del repositorio es:
+
+\begin{verbatim}
+src/
+|-- data_generation.py
+|-- clustering.py
+`-- tsp_solver.py
+\end{verbatim}
+
+% ... [Rest of your sections remain the same] ...
+
+\end{document}

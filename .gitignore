@@ -218,3 +218,17 @@ __marimo__/
 /cache
 *.npz 
 *.png
+# LaTeX build artifacts
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.toc
+*.snm
+*.synctex.gz
+*.bbl
+*.bcf
+*.blg
+*.run.xml
+*.pdf

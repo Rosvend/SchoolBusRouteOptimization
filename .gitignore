@@ -1,3 +1,18 @@
+# Claude session data
+.claude/
+
+# Nested project copy (accidental)
+SchoolBusRouteOptimization/
+
+# Generated data at root level (copies of src/)
+clustering_result.npz
+scenario_data.npz
+setcover_result.npz
+tsp_result.npz
+
+# nbconvert output
+*.nbconvert.ipynb
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

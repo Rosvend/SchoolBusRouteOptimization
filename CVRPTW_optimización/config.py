@@ -1,8 +1,7 @@
 """
 config.py  —  Central configuration for the school bus routing pipeline.
-Edit this file to change any parameter.
 
-Expected project layout:
+Project layout:
     project/
     ├── config.py
     ├── generate_data.py
@@ -30,7 +29,6 @@ SCHOOL_NAME = "UPB"
 # ── Scenario ──────────────────────────────────────────────────────────────
 N_CHILDREN   = 200   # total children across the entire Valle
 BUS_CAPACITY = 20    # max children per bus
-MIN_ZONE_CHILDREN = 15  
 
 # ── DANE 2026 population estimates for non-Medellín municipalities ────────
 MUNICIPALITY_POPULATION = {
@@ -40,6 +38,70 @@ MUNICIPALITY_POPULATION = {
     "Sabaneta":     110_000,
     "La Estrella":   70_000,
 }
+
+# ── 6 Routing zones ───────────────────────────────────────────────────────
+# Children are SAMPLED by individual comuna/municipality (generate_data.py).
+# Routes are OPTIMISED by these 6 broader zones (optimize_routes.py).
+# Each zone gets its own CVRPTW and its own set of buses.
+ZONE_DEFINITIONS = [
+    {
+        "zone_name": "Norte",
+        "color":     "#3A86FF",
+        "members": [
+            "Bello",
+        ],
+    },
+    {
+        "zone_name": "Nororiental",
+        "color":     "#FF006E",
+        "members": [
+            "Comuna 1 - Popular",
+            "Comuna 2 - Santa Cruz",
+            "Comuna 3 - Manrique",
+        ],
+    },
+    {
+        "zone_name": "Noroccidental",
+        "color":     "#FB5607",
+        "members": [
+            "Comuna 4 - Aranjuez",
+            "Comuna 5 - Castilla",
+            "Comuna 6 - Doce de Octubre",
+            "Comuna 7 - Robledo",
+        ],
+    },
+    {
+        "zone_name": "Centro",
+        "color":     "#FFBE0B",
+        "members": [
+            "Comuna 10 - La Candelaria",
+            "Comuna 11 - Laureles-Estadio",
+            "Comuna 12 - La América",
+            "Comuna 13 - San Javier",
+        ],
+    },
+    {
+        "zone_name": "Suroriental",
+        "color":     "#8338EC",
+        "members": [
+            "Comuna 8 - Villa Hermosa",
+            "Comuna 9 - Buenos Aires",
+            "Comuna 14 - El Poblado",
+            "Envigado",
+        ],
+    },
+    {
+        "zone_name": "Sur",
+        "color":     "#06D6A0",
+        "members": [
+            "Comuna 15 - Guayabal",
+            "Comuna 16 - Belén",
+            "Itagüí",
+            "Sabaneta",
+            "La Estrella",
+        ],
+    },
+]
 
 # ── Time-window / routing model ───────────────────────────────────────────
 MAX_ROUTE_MINUTES  = 75    # hard upper bound per route
@@ -52,7 +114,7 @@ SPEED_FALLBACK_KPH = 30    # used when OSM maxspeed tag is absent
 SPAN_BALANCE_COEFF = 300
 
 # ── Solver ────────────────────────────────────────────────────────────────
-OR_TOOLS_TIME_LIMIT_SEC = 20
+OR_TOOLS_TIME_LIMIT_SEC = 20   # search time per zone
 
 # ── Road types eligible for stop placement ────────────────────────────────
 RESIDENTIAL_ROAD_TYPES = frozenset({

@@ -1,27 +1,3 @@
-"""
-generate_data.py  —  Stage 1: Road network + population-weighted child sampling.
-
-What this does:
-  1. Builds 21 sampling zones:
-       • 16 Medellín comunas  → barrio polygons (EPSG:9377→WGS84) + CSV pop.
-       • 5 other municipalities → polygons from valle_aburra_urbano.geojson
-                                  + DANE 2026 population estimates.
-  2. Downloads the full Valle de Aburrá drive network from OpenStreetMap.
-  3. Adds OSMnx speed/travel-time data to every edge.
-  4. Builds a pool of eligible road nodes per zone (residential/urban roads
-     inside each polygon, using a Shapely STRtree spatial index).
-  5. Samples N_CHILDREN stops:
-       • Zone is chosen with probability ∝ population.
-       • Within the zone a random eligible node is picked (no repeats).
-  6. Snaps the UPB school to the nearest network node.
-  7. Computes the full N×N travel-time (seconds) and distance (metres)
-     matrices using Dijkstra.
-  8. Saves everything to outputs/scenario_data.npz.
-
-Run:
-    python generate_data.py
-"""
-
 import json
 from pathlib import Path
 
@@ -110,9 +86,9 @@ def build_zones() -> list[dict]:
 
     for feat in gj["features"]:
         p    = feat["properties"]
-        ref  = str(p.get("ref", "")).strip().zfill(2)   # zero-pad to "01".."16"
+        ref  = str(p.get("ref", "")).strip().zfill(2)   
         name = str(p.get("name", f"Comuna {ref}")).strip()
-        geom = shape(feat["geometry"])                   # already WGS-84
+        geom = shape(feat["geometry"])                  
         pop  = commune_pop.get(ref, commune_pop.get(ref.lstrip("0"), 10_000))
         zones.append({
             "name":         name,
@@ -133,7 +109,7 @@ def build_zones() -> list[dict]:
     for feat in gj2["features"]:
         p = feat["properties"]
         if p.get("municipio") != "Medellín":
-            muni_geoms[p["municipio"]] = shape(feat["geometry"])  # WGS-84
+            muni_geoms[p["municipio"]] = shape(feat["geometry"])  
 
     for muni_name, pop in cfg.MUNICIPALITY_POPULATION.items():
         if muni_name not in muni_geoms:
@@ -287,7 +263,6 @@ def compute_matrices(G: nx.MultiDiGraph,
             time_mat[i, j] = float(t_len.get(node_ids[j], np.inf))
             dist_mat[i, j] = float(d_len.get(node_ids[j], np.inf))
 
-    # Replace inf with large-but-finite penalty
     max_t = np.nanmax(time_mat[np.isfinite(time_mat)]) * 10
     max_d = np.nanmax(dist_mat[np.isfinite(dist_mat)]) * 10
     time_mat = np.where(np.isinf(time_mat), max_t, time_mat)

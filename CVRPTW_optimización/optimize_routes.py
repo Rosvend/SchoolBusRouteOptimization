@@ -1,28 +1,9 @@
-"""
-optimize_routes.py  —  Stage 2: Multi-objective CVRPTW per zone.
-
-For every zone (16 Medellín comunas + 5 municipalities):
-  1. Identifies which children belong to the zone.
-  2. Determines k = ⌈n_children / BUS_CAPACITY⌉ buses.
-  3. Solves a Capacitated VRP with Time Windows (CVRPTW) via OR-Tools:
-       PRIMARY objective   → minimise total travel time (seconds).
-       SECONDARY objective → minimise route-time imbalance (SetGlobalSpanCost).
-       HARD constraint     → each route ≤ MAX_ROUTE_MINUTES including boarding.
-  4. Reports route distances, times, and worst-case route per zone.
-
-Outputs:
-  outputs/route_results.json  — full results consumed by visualize_results.py
-
-Run:
-    python optimize_routes.py
-"""
-
 import json
 import math
 from pathlib import Path
 
 import numpy as np
-from shapely.geometry import Point, shape
+from shapely.geometry import shape
 
 from ortools.constraint_solver import routing_enums_pb2, pywrapcp
 
@@ -30,147 +11,193 @@ import config as cfg
 
 
 # =============================================================================
-# 1.  Rebuild zone geometries (needed for point-in-polygon)
+# 1.  Build the 6 routing zones
 # =============================================================================
 
-def load_zones() -> list[dict]:
+def build_routing_zones() -> list[dict]:
     """
-    Returns same structure as generate_data.build_zones() but geometry only
-    (no road-network work needed here).
+    Returns a list of 6 zone dicts, each with:
+        zone_name  : str
+        color      : str  (hex, from config)
+        members    : list[str]  individual commune/municipality names
+        geometry   : merged Shapely geometry of all member polygons
+        centroid   : (lon, lat) of the merged geometry
     """
-    zones = []
+    from shapely.ops import unary_union
 
-    # Medellín comunas
+    # Load individual commune geometries
+    commune_geoms: dict[str, object] = {}
     with open(cfg.COMUNAS_GEOJSON, encoding="utf-8") as f:
         gj = json.load(f)
     for feat in gj["features"]:
         p    = feat["properties"]
-        ref  = str(p.get("ref", "")).strip().zfill(2)
-        name = str(p.get("name", f"Comuna {ref}")).strip()
-        geom = shape(feat["geometry"])
-        zones.append({"name": name, "municipality": "Medellín",
-                      "geometry": geom,
-                      "centroid": (geom.centroid.x, geom.centroid.y)})
+        name = str(p.get("name", "")).strip()
+        if name:
+            commune_geoms[name] = shape(feat["geometry"])
 
-    zones.sort(key=lambda z: int(z["name"].split()[1])
-               if z["municipality"] == "Medellín" else 99)
-
-    # Other municipalities
+    # Load municipality geometries
+    muni_geoms: dict[str, object] = {}
     with open(cfg.VALLE_GEOJSON, encoding="utf-8") as f:
         gj2 = json.load(f)
     for feat in gj2["features"]:
         p = feat["properties"]
         if p.get("municipio") != "Medellín":
-            geom = shape(feat["geometry"])
-            zones.append({"name": p["municipio"],
-                          "municipality": p["municipio"],
-                          "geometry": geom,
-                          "centroid": (geom.centroid.x, geom.centroid.y)})
+            muni_geoms[p["municipio"]] = shape(feat["geometry"])
+
+    zones = []
+    for zdef in cfg.ZONE_DEFINITIONS:
+        polys = []
+        for member in zdef["members"]:
+            if member in commune_geoms:
+                polys.append(commune_geoms[member])
+            elif member in muni_geoms:
+                polys.append(muni_geoms[member])
+            else:
+                print(f"  WARNING: '{member}' not found in any GeoJSON — "
+                      "check spelling in config.ZONE_DEFINITIONS")
+
+        if not polys:
+            raise ValueError(
+                f"Zone '{zdef['zone_name']}' has no valid polygons. "
+                "Fix the 'members' list in config.ZONE_DEFINITIONS."
+            )
+
+        merged   = unary_union(polys)
+        centroid = (merged.centroid.x, merged.centroid.y)
+        zones.append({
+            "zone_name": zdef["zone_name"],
+            "color":     zdef["color"],
+            "members":   zdef["members"],
+            "geometry":  merged,
+            "centroid":  centroid,
+        })
+        print(f"  Zone '{zdef['zone_name']:15s}': "
+              f"{len(polys)} sub-polygon(s) merged")
+
     return zones
 
 
 # =============================================================================
-# 2.  Assign children to zones
+# 2.  Assign each child to one of the 6 zones
 # =============================================================================
 
-def assign_zones(x: np.ndarray, y: np.ndarray,
-                 origin_idx: int, zones: list[dict],
-                 saved_zone_names: np.ndarray) -> np.ndarray:
-    """
-    Primary: use the zone names saved during data generation (exact match).
-    Fallback: point-in-polygon, then nearest centroid.
-    Returns zone_labels[i] = zone index, -1 for depot.
-    """
-    zone_name_to_idx = {z["name"]: i for i, z in enumerate(zones)}
+def assign_to_routing_zones(x: np.ndarray,
+                             y: np.ndarray,
+                             origin_idx: int,
+                             zones: list[dict],
+                             node_zones: np.ndarray) -> np.ndarray:
+    
+    # Build lookup: individual commune/municipality name → routing zone index
+    member_to_zone: dict[str, int] = {}
+    for z_idx, zone in enumerate(zones):
+        for member in zone["members"]:
+            member_to_zone[member] = z_idx
+
     n      = len(x)
     labels = np.full(n, -1, dtype=int)
+    n_fallback_pip = 0
+    n_fallback_centroid = 0
 
-    for i in range(n - 1):   # last entry is depot
-        saved = saved_zone_names[i] if i < len(saved_zone_names) else ""
-        if saved in zone_name_to_idx:
-            labels[i] = zone_name_to_idx[saved]
+    from shapely.geometry import Point
+
+    for i in range(n):
+        if i == origin_idx:
             continue
-        # Fallback: point-in-polygon
+
+        # Primary: lookup via saved fine-grained zone name
+        saved = str(node_zones[i]) if i < len(node_zones) else ""
+        if saved in member_to_zone:
+            labels[i] = member_to_zone[saved]
+            continue
+
+        # Fallback 1: point-in-polygon
         pt       = Point(x[i], y[i])
         assigned = False
-        for z_idx, z in enumerate(zones):
-            if z["geometry"].covers(pt):
+        for z_idx, zone in enumerate(zones):
+            if zone["geometry"].covers(pt):
                 labels[i] = z_idx
                 assigned   = True
+                n_fallback_pip += 1
                 break
+
+        # Fallback 2: nearest centroid
         if not assigned:
             dists      = [(x[i] - z["centroid"][0])**2 +
                           (y[i] - z["centroid"][1])**2 for z in zones]
             labels[i]  = int(np.argmin(dists))
+            n_fallback_centroid += 1
+
+    print(f"  Assignment method breakdown:")
+    for z_idx, zone in enumerate(zones):
+        n_z = int(np.sum(labels == z_idx))
+        k_z = max(1, math.ceil(n_z / cfg.BUS_CAPACITY))
+        print(f"    {zone['zone_name']:15s}: {n_z:3d} children → {k_z} bus(es)")
+    if n_fallback_pip:
+        print(f"  ({n_fallback_pip} children via point-in-polygon fallback)")
+    if n_fallback_centroid:
+        print(f"  ({n_fallback_centroid} children via nearest-centroid fallback)")
 
     return labels
 
 
 # =============================================================================
-# 3.  OR-Tools CVRPTW
+# 3.  CVRPTW solver (one call per zone)
 # =============================================================================
 
-def solve_cvrptw(time_sub: np.ndarray,
-                 n_children: int,
-                 depot_local: int,
-                 k: int,
-                 zone_name: str) -> tuple[list[list[int]], list[float], list[float]]:
-    """
-    Solve CVRPTW for one zone.
-
-    Returns
-    -------
-    routes       : k lists of LOCAL child indices in visit order
-    route_times  : route duration in minutes per bus (incl. boarding)
-    route_dists  : approximate route distance proxy (travel time, seconds)
-    """
-    n              = time_sub.shape[0]
-    max_ms         = int(cfg.MAX_ROUTE_MINUTES * 60 * 1000)
-    boarding_ms    = int(cfg.BOARDING_SECONDS * 1000)
-
-    int_time = (time_sub * 1000).astype(np.int64)
+def solve_zone_cvrptw(time_sub: np.ndarray,
+                      n_children: int,
+                      depot_local: int,
+                      k: int,
+                      zone_name: str) -> tuple[list[list[int]], list[float]]:
+    
+    n           = time_sub.shape[0]
+    max_ms      = int(cfg.MAX_ROUTE_MINUTES * 60 * 1000)
+    boarding_ms = int(cfg.BOARDING_SECONDS * 1000)
+    int_time    = (time_sub * 1000).astype(np.int64)
 
     manager = pywrapcp.RoutingIndexManager(n, k, depot_local)
     routing = pywrapcp.RoutingModel(manager)
 
-    # Arc-cost: pure travel time (objective 1 — minimise total travel time)
+    # Arc-cost: pure travel time (primary objective)
     def travel_cb(fi, ti):
-        return int(int_time[manager.IndexToNode(fi), manager.IndexToNode(ti)])
+        fn = manager.IndexToNode(fi)
+        tn = manager.IndexToNode(ti)
+        return int(int_time[fn, tn])
 
-    arc_cb_idx = routing.RegisterTransitCallback(travel_cb)
-    routing.SetArcCostEvaluatorOfAllVehicles(arc_cb_idx)
+    arc_cb = routing.RegisterTransitCallback(travel_cb)
+    routing.SetArcCostEvaluatorOfAllVehicles(arc_cb)
 
-    # Time dimension: travel + boarding at each pickup stop
+    # Time dimension: travel + boarding at every pickup stop
     def time_with_boarding(fi, ti):
         fn = manager.IndexToNode(fi)
         tn = manager.IndexToNode(ti)
         b  = 0 if fn == depot_local else boarding_ms
         return int(int_time[fn, tn]) + b
 
-    time_cb_idx = routing.RegisterTransitCallback(time_with_boarding)
+    time_cb = routing.RegisterTransitCallback(time_with_boarding)
     routing.AddDimension(
-        time_cb_idx,
-        0,        # no slack
-        max_ms,   # hard upper bound on total route time
-        True,     # cumulative variable starts at 0
+        time_cb,
+        0,        
+        max_ms,   
+        True,     
         "Time",
     )
     time_dim = routing.GetDimensionOrDie("Time")
 
-    # Objective 2: penalise imbalance between longest and shortest route
+    # Secondary objective: balance route durations across buses
     time_dim.SetGlobalSpanCostCoefficient(cfg.SPAN_BALANCE_COEFF)
 
-    # Capacity dimension: every child stop has demand = 1
+    # Capacity: demand = 1 per child stop
     def demand_cb(fi):
         return 0 if manager.IndexToNode(fi) == depot_local else 1
 
-    dem_cb_idx = routing.RegisterUnaryTransitCallback(demand_cb)
+    dem_cb = routing.RegisterUnaryTransitCallback(demand_cb)
     routing.AddDimensionWithVehicleCapacity(
-        dem_cb_idx, 0, [cfg.BUS_CAPACITY] * k, True, "Capacity"
+        dem_cb, 0, [cfg.BUS_CAPACITY] * k, True, "Capacity"
     )
 
-    # High penalty for unserved children (forces full coverage)
-    penalty = max_ms * 200
+    # Very high drop penalty → forces OR-Tools to serve every child
+    penalty = max_ms * 500
     for node in range(n):
         if node != depot_local:
             routing.AddDisjunction([manager.NodeToIndex(node)], penalty)
@@ -185,10 +212,11 @@ def solve_cvrptw(time_sub: np.ndarray,
     solution = routing.SolveWithParameters(params)
 
     if solution is None:
-        print(f"    [{zone_name}] WARNING: no solution found — empty routes.")
-        return [[] for _ in range(k)], [0.0] * k, [0.0] * k
+        print(f"    [{zone_name}] WARNING: no solution found. "
+              "Try raising MAX_ROUTE_MINUTES or OR_TOOLS_TIME_LIMIT_SEC.")
+        return [[] for _ in range(k)], [0.0] * k
 
-    routes, route_times, route_dists = [], [], []
+    routes, route_times = [], []
     for v in range(k):
         route = []
         idx   = routing.Start(v)
@@ -198,47 +226,54 @@ def solve_cvrptw(time_sub: np.ndarray,
                 route.append(node)
             idx = solution.Value(routing.NextVar(idx))
         routes.append(route)
-
         end_ms = solution.Min(time_dim.CumulVar(routing.End(v)))
-        route_times.append(round(end_ms / 60_000, 2))   # minutes
-        route_dists.append(round(end_ms / 1000, 1))     # seconds (proxy)
+        route_times.append(round(end_ms / 60_000, 2))
 
-    served = sum(len(r) for r in routes)
+    served  = sum(len(r) for r in routes)
     if served < n_children:
         print(f"    [{zone_name}] WARNING: {n_children - served} child(ren) "
-              "unserved — raise MAX_ROUTE_MINUTES or lower N_CHILDREN.")
+              "unserved — raise MAX_ROUTE_MINUTES.")
 
-    return routes, route_times, route_dists
+    return routes, route_times
 
 
 # =============================================================================
 # 4.  Per-zone driver
 # =============================================================================
 
-def process_zone(z_idx: int, zone: dict,
-                 zone_labels: np.ndarray,
+def process_zone(z_idx: int,
+                 zone: dict,
+                 routing_labels: np.ndarray,
                  full_time: np.ndarray,
                  full_dist: np.ndarray,
-                 x: np.ndarray, y: np.ndarray,
-                 origin_idx: int) -> dict | None:
+                 x: np.ndarray,
+                 y: np.ndarray,
+                 origin_idx: int,
+                 node_zones: np.ndarray) -> dict | None:
+    """Run CVRPTW for one of the 6 zones. Returns result dict or None."""
 
-    child_mask        = zone_labels == z_idx
-    zone_scenario_idx = np.where(child_mask)[0]
+    child_mask        = routing_labels == z_idx
+    zone_scenario_idx = np.where(child_mask)[0]   
     n_zone            = len(zone_scenario_idx)
+
     if n_zone == 0:
+        print(f"  {zone['zone_name']}: 0 children — skipped")
         return None
 
     k = max(1, math.ceil(n_zone / cfg.BUS_CAPACITY))
-    print(f"\n  {zone['name']}: {n_zone} children → {k} bus(es)")
+    print(f"\n  {zone['zone_name']}: {n_zone} children → {k} bus(es)")
 
+    # Build sub-matrices: zone children + depot
     sub_indices = np.append(zone_scenario_idx, origin_idx)
     depot_local = len(sub_indices) - 1
     time_sub    = full_time[np.ix_(sub_indices, sub_indices)]
     dist_sub    = full_dist[np.ix_(sub_indices, sub_indices)]
 
-    local_routes, rt_min, _ = solve_cvrptw(
-        time_sub, n_zone, depot_local, k, zone["name"])
+    # Solve CVRPTW (routes contain LOCAL indices into zone_scenario_idx)
+    local_routes, rt_min = solve_zone_cvrptw(
+        time_sub, n_zone, depot_local, k, zone["zone_name"])
 
+    # Convert local indices → full scenario indices and compute metrics
     scenario_routes  = []
     route_distances  = []
     route_times_min  = []
@@ -248,8 +283,10 @@ def process_zone(z_idx: int, zone: dict,
         scenario_routes.append(r_scenario)
 
         stops = [origin_idx] + r_scenario + [origin_idx]
-        dist  = sum(full_dist[stops[i], stops[i+1]] for i in range(len(stops)-1))
-        time_ = sum(full_time[stops[i], stops[i+1]] for i in range(len(stops)-1))
+        dist  = sum(full_dist[stops[i], stops[i+1]]
+                    for i in range(len(stops) - 1))
+        time_ = sum(full_time[stops[i], stops[i+1]]
+                    for i in range(len(stops) - 1))
         time_ += len(r_scenario) * cfg.BOARDING_SECONDS
         route_distances.append(round(dist, 1))
         route_times_min.append(round(time_ / 60, 2))
@@ -259,15 +296,16 @@ def process_zone(z_idx: int, zone: dict,
 
     print(f"    Total: {tot_km:.2f} km  |  longest route: {max_min:.1f} min")
     for c, (rt, rd) in enumerate(zip(route_times_min, route_distances)):
-        nc = len(scenario_routes[c])
+        nc   = len(scenario_routes[c])
         flag = "  ⚠ OVER LIMIT" if rt > cfg.MAX_ROUTE_MINUTES else ""
-        print(f"    Bus {c}: {nc:2d} children  {rt:.1f} min  "
+        print(f"    Bus {c+1}: {nc:2d} children  {rt:.1f} min  "
               f"{rd/1000:.2f} km{flag}")
 
     return {
         "zone_idx":          z_idx,
-        "zone_name":         zone["name"],
-        "municipality":      zone["municipality"],
+        "zone_name":         zone["zone_name"],
+        "zone_color":        zone["color"],
+        "members":           zone["members"],
         "n_children":        n_zone,
         "k_buses":           k,
         "scenario_indices":  zone_scenario_idx.tolist(),
@@ -279,134 +317,64 @@ def process_zone(z_idx: int, zone: dict,
         "max_route_min":     round(max_min, 2),
     }
 
-# =============================================================================
-# 5.  Zone merging — absorb zones with too few children
-# =============================================================================
-
-def merge_small_zones(zone_labels: np.ndarray,
-                      zones: list[dict],
-                      x: np.ndarray,
-                      y: np.ndarray,
-                      origin_idx: int) -> np.ndarray:
-    """
-    Iteratively merges the smallest zone into its geographically nearest
-    neighbour until every active zone has at least MIN_ZONE_CHILDREN children.
-
-    'Nearest' is measured centroid-to-centroid.
-
-    Returns a new zone_labels array with updated assignments.
-    """
-    labels = zone_labels.copy()
-    threshold = cfg.MIN_ZONE_CHILDREN
-
-    # Build centroid lookup
-    centroids = {i: z["centroid"] for i, z in enumerate(zones)}
-
-    while True:
-        # Count children per zone (exclude depot at origin_idx)
-        counts = {}
-        for i in range(len(x)):
-            if i == origin_idx or labels[i] < 0:
-                continue
-            z = int(labels[i])
-            counts[z] = counts.get(z, 0) + 1
-
-        # Find the zone with fewest children (if below threshold)
-        small = [(z, n) for z, n in counts.items() if n < threshold]
-        if not small:
-            break  # all zones meet the threshold — done
-
-        # Pick the smallest zone
-        victim_idx, victim_count = min(small, key=lambda t: t[1])
-
-        # Find its nearest neighbour zone (by centroid distance)
-        cx, cy = centroids[victim_idx]
-        best_neighbour = min(
-            (z for z in counts if z != victim_idx),
-            key=lambda z: (centroids[z][0] - cx)**2 + (centroids[z][1] - cy)**2,
-            default=None,
-        )
-
-        if best_neighbour is None:
-            break  # only one zone left — nothing to merge into
-
-        # Reassign all children from victim → neighbour
-        labels[labels == victim_idx] = best_neighbour
-        print(f"  Merged zone {zones[victim_idx]['name']!r} "
-              f"({victim_count} children) → {zones[best_neighbour]['name']!r}")
-
-    # Report final counts
-    final_counts = {}
-    for i in range(len(x)):
-        if i == origin_idx or labels[i] < 0:
-            continue
-        z = int(labels[i])
-        final_counts[z] = final_counts.get(z, 0) + 1
-
-    print(f"\n  Active zones after merging: {len(final_counts)}")
-    total_buses = sum(
-        max(1, math.ceil(n / cfg.BUS_CAPACITY))
-        for n in final_counts.values()
-    )
-    print(f"  Estimated total buses: {total_buses}")
-    for z_idx in sorted(final_counts):
-        k_est = max(1, math.ceil(final_counts[z_idx] / cfg.BUS_CAPACITY))
-        print(f"    {zones[z_idx]['name']:<35s}: "
-              f"{final_counts[z_idx]:3d} children → {k_est} bus(es)")
-    return labels
 
 # =============================================================================
-# Main
+# 5.  Main
 # =============================================================================
 
 def main():
     print("=" * 62)
-    print("Stage 2 — Multi-Objective CVRPTW  (Valle de Aburrá)")
+    print("Stage 2 — Zone-Based Multi-Objective CVRPTW")
     print("=" * 62)
 
-    scenario    = np.load(cfg.SCENARIO_NPZ, allow_pickle=True)
-    full_time   = scenario["time_matrix"]
-    full_dist   = scenario["dist_matrix"]
-    x           = scenario["x"]
-    y           = scenario["y"]
-    origin_idx  = int(scenario["origin_index"])
-    node_zones  = scenario["node_zones"]
-    n_children  = full_time.shape[0] - 1
-    print(f"\n  {n_children} children  |  bus capacity {cfg.BUS_CAPACITY}  "
-          f"|  max route {cfg.MAX_ROUTE_MINUTES} min  "
-          f"|  min zone size {cfg.MIN_ZONE_CHILDREN}")
+    scenario   = np.load(cfg.SCENARIO_NPZ, allow_pickle=True)
+    full_time  = scenario["time_matrix"]
+    full_dist  = scenario["dist_matrix"]
+    x          = scenario["x"]
+    y          = scenario["y"]
+    origin_idx = int(scenario["origin_index"])
+    node_zones = scenario["node_zones"]
+    n_children = full_time.shape[0] - 1
 
-    print("\nLoading zone polygons …")
-    zones = load_zones()
+    print(f"\n  {n_children} children  |  capacity {cfg.BUS_CAPACITY}  "
+          f"|  max route {cfg.MAX_ROUTE_MINUTES} min")
+    print(f"  Theoretical minimum buses: "
+          f"ceil({n_children}/{cfg.BUS_CAPACITY}) = "
+          f"{math.ceil(n_children/cfg.BUS_CAPACITY)}")
 
-    print("\nAssigning children to zones …")
-    zone_labels = assign_zones(x, y, origin_idx, zones, node_zones)
+    # Build the 6 routing zones
+    print("\nBuilding 6 routing zones …")
+    routing_zones = build_routing_zones()
 
-    # ── NEW: merge small zones before optimising ──────────────────────────
-    print(f"\nMerging zones with fewer than {cfg.MIN_ZONE_CHILDREN} children …")
-    zone_labels = merge_small_zones(zone_labels, zones, x, y, origin_idx)
+    # Assign children to one of the 6 zones
+    print("\nAssigning children to routing zones …")
+    routing_labels = assign_to_routing_zones(
+        x, y, origin_idx, routing_zones, node_zones)
 
-    print(f"\nOptimising per zone …")
+    # Solve per zone
+    print("\nOptimising routes per zone …")
     results = []
-    for z_idx, zone in enumerate(zones):
-        res = process_zone(z_idx, zone, zone_labels,
-                           full_time, full_dist, x, y, origin_idx)
+    for z_idx, zone in enumerate(routing_zones):
+        res = process_zone(
+            z_idx, zone, routing_labels,
+            full_time, full_dist, x, y, origin_idx, node_zones)
         if res is not None:
             results.append(res)
 
-    total_buses = sum(r["k_buses"] for r in results)
-    total_km    = sum(r["total_distance_m"] for r in results) / 1000
-    total_min   = sum(r["total_time_min"] for r in results)
-    worst_min   = max(r["max_route_min"] for r in results)
+    # Global summary
+    total_buses = sum(r["k_buses"]           for r in results)
+    total_km    = sum(r["total_distance_m"]  for r in results) / 1000
+    total_min   = sum(r["total_time_min"]    for r in results)
+    worst_min   = max(r["max_route_min"]     for r in results)
 
     print(f"\n{'='*62}")
     print("GLOBAL SUMMARY")
     print(f"{'='*62}")
-    print(f"  Active zones     : {len(results)}")
+    print(f"  Active zones     : {len(results)} / {len(routing_zones)}")
     print(f"  Total buses      : {total_buses}")
     print(f"  Total distance   : {total_km:.1f} km")
     print(f"  Cumulative time  : {total_min:.0f} min")
-    print(f"  Longest route    : {worst_min:.1f} min  "
+    print(f"  Longest route    : {worst_min:.1f} min "
           f"(limit: {cfg.MAX_ROUTE_MINUTES} min)")
 
     output = {
@@ -416,7 +384,6 @@ def main():
             "max_route_minutes":   cfg.MAX_ROUTE_MINUTES,
             "boarding_seconds":    cfg.BOARDING_SECONDS,
             "span_balance_coeff":  cfg.SPAN_BALANCE_COEFF,
-            "min_zone_children":   cfg.MIN_ZONE_CHILDREN,
         },
         "summary": {
             "total_buses":        total_buses,
@@ -425,12 +392,17 @@ def main():
             "worst_route_min":    round(worst_min, 2),
             "active_zones":       len(results),
         },
-        "zone_labels":  zone_labels.tolist(),
-        "zones_meta":   [{"idx": i, "name": z["name"],
-                          "municipality": z["municipality"],
-                          "centroid": list(z["centroid"])}
-                         for i, z in enumerate(zones)],
-        "results":      results,
+        "x":             x.tolist(),
+        "y":             y.tolist(),
+        "origin_idx":    origin_idx,
+        "node_zones":    node_zones.tolist(),
+        "routing_labels":routing_labels.tolist(),
+        "zone_defs":     [{"zone_name": z["zone_name"],
+                           "color":     z["color"],
+                           "members":   z["members"],
+                           "centroid":  list(z["centroid"])}
+                          for z in routing_zones],
+        "results":       results,
     }
 
     Path(cfg.RESULTS_JSON).parent.mkdir(parents=True, exist_ok=True)
@@ -438,3 +410,7 @@ def main():
         json.dump(output, f, ensure_ascii=False, indent=2)
     print(f"\n  Saved → {cfg.RESULTS_JSON}")
     print("Stage 2 complete.\n")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,12 +1,3 @@
-"""
-run_all.py  —  Run the full pipeline in one command.
-
-Usage:
-    python run_all.py           # runs all 3 stages
-    python run_all.py --stage 2 # runs only stage 2 (optimize_routes)
-    python run_all.py --stage 3 # runs only stage 3 (visualize_results)
-"""
-
 import sys
 import time
 import argparse

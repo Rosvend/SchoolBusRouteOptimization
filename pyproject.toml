@@ -12,5 +12,9 @@ dependencies = [
     "numpy>=2.4.2",
     "ortools>=9.15.6755",
     "osmnx>=2.1.0",
+    "pandas>=2.2.0",
+    "pulp>=2.9.0",
+    "scikit-learn>=1.5.0",
+    "shapely>=2.0.0",
     "tqdm>=4.67.3",
 ]

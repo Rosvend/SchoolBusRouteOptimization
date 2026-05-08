@@ -9,6 +9,7 @@ import numpy as np
 import osmnx as ox
 from shapely.geometry import Point, shape
 from shapely.ops import unary_union
+from shapely.prepared import prep
 from shapely.strtree import STRtree
 
 from ..core.scenario import Scenario, ZonePolygon
@@ -115,6 +116,8 @@ def _tag_node_zones(node_xy: list[tuple[float, float]],
 
 _GRAPH_SINGLETON: nx.MultiDiGraph | None = None
 _ZONES_SINGLETON: list[ZonePolygon] | None = None
+_METRO_POLY_SINGLETON = None
+_METRO_NODES_SINGLETON: list | None = None
 
 
 def _shared_graph() -> nx.MultiDiGraph:
@@ -131,6 +134,36 @@ def _shared_zones() -> list[ZonePolygon]:
     return _ZONES_SINGLETON
 
 
+def _shared_metro_polygon():
+    """Union of all CVRPTW zone polygons = Valle de Aburrá urban footprint."""
+    global _METRO_POLY_SINGLETON
+    if _METRO_POLY_SINGLETON is None:
+        _METRO_POLY_SINGLETON = unary_union([z.geometry for z in _shared_zones()])
+    return _METRO_POLY_SINGLETON
+
+
+def _shared_metro_nodes() -> list:
+    """Graph nodes whose (lon, lat) falls inside the Valle de Aburrá polygon.
+    Children are sampled from this set so no student lands in mountain
+    corregimientos or outside the metro area."""
+    global _METRO_NODES_SINGLETON
+    if _METRO_NODES_SINGLETON is None:
+        G = _shared_graph()
+        prepared = prep(_shared_metro_polygon())
+        _METRO_NODES_SINGLETON = [
+            n for n in G.nodes
+            if prepared.contains(Point(G.nodes[n]["x"], G.nodes[n]["y"]))
+        ]
+        if len(_METRO_NODES_SINGLETON) < 1000:
+            raise RuntimeError(
+                f"Only {len(_METRO_NODES_SINGLETON)} graph nodes inside Valle "
+                "de Aburrá polygon — check GeoJSON loading."
+            )
+        print(f"  Metro polygon contains {len(_METRO_NODES_SINGLETON)} of "
+              f"{G.number_of_nodes()} graph nodes")
+    return _METRO_NODES_SINGLETON
+
+
 def make_scenario(n_children: int,
                   seed: int,
                   bus_capacity: int = DEFAULT_BUS_CAPACITY) -> Scenario:
@@ -142,10 +175,11 @@ def make_scenario(n_children: int,
     """
     G = _shared_graph()
     zones = _shared_zones()
+    metro_nodes = _shared_metro_nodes()
     rng = np.random.default_rng(seed)
 
     all_nodes = list(G.nodes)
-    children = list(rng.choice(all_nodes, size=n_children, replace=False))
+    children = list(rng.choice(metro_nodes, size=n_children, replace=False))
 
     # Snap depot to the closest graph node
     x_all = np.array([G.nodes[n]["x"] for n in all_nodes])

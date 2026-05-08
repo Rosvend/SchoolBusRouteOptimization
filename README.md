@@ -2,17 +2,42 @@
 
 ## Overview
 
-This repository implements a heuristic pipeline for school bus route planning in Medellin using a real road network.
+This repository implements and benchmarks heuristic pipelines for school bus route planning in Medellín / Valle de Aburrá using a real road network from OpenStreetMap.
 
-The workflow is split into three stages:
+The project has two layers:
 
-1. Scenario generation from OpenStreetMap road data.
-2. Capacitated clustering of student stops using k-medoids with min-cost flow assignment.
-3. Per-cluster route optimization with Google OR-Tools (TSP-style routing).
+1. **Baseline pipeline** (`src/`) — a three-stage workflow: scenario generation, capacitated k-medoids clustering with min-cost flow assignment, and per-cluster TSP routing with Google OR-Tools.
+2. **Benchmarking harness** (`src/benchmarks/`) — a unified evaluation framework that runs five routing algorithms over the same scenarios and reports comparable metrics (fleet distance, latency, coverage, silhouette, capacity violations).
 
-The current setup models one school/depot and bus-capacity-constrained assignments, and computes one closed route per bus cluster.
+Both layers model one school/depot and bus-capacity-constrained assignments, and compute one closed route per bus.
 
-## How It Works
+## Project Status
+
+- The baseline pipeline (k-medoids + OR-Tools) is complete and produces full-coverage routes.
+- A unified benchmarking harness compares five algorithms on identical scenarios:
+  1. `kmedoids_ortools` — capacitated k-medoids (min-cost flow) + OR-Tools TSP per cluster.
+  2. `cvrptw_zones` — CVRPTW with fixed geographic zones, time windows, and max route duration.
+  3. `setcover_perchild` — per-child Set Cover ILP (PuLP/CBC) + nearest-neighbor tour.
+  4. `setcover_grid` — grid-seeded Set Cover ILP + greedy TSP.
+  5. `genetic` — generic GA with OX crossover, swap mutation, tournament selection, elitism, 2-opt refinement.
+- Latest sweep results live in `results/` (`runs.csv`, `summary.md`, `scalability.png`, per-scenario maps under `plots/`).
+- A talking-points write-up of the comparative evaluation is in `docs/BENCHMARK_INSIGHTS.md`; the LaTeX paper is under `docs/latex/`.
+
+### Headline benchmark results
+
+From the most recent sweep at N=100 students (mean over 3 seeds, full default settings):
+
+| algo              | fleet distance (m) | latency (s) | buses | coverage | silhouette |
+|-------------------|--------------------|-------------|-------|----------|------------|
+| kmedoids_ortools  | 163,024            | 25.05       | 5.0   | 1.000    |  0.354     |
+| cvrptw_zones      | 186,630            | 100.01      | 7.0   | 1.000    |  0.250     |
+| genetic           | 202,934            | 22.32       | 5.0   | 1.000    | -0.076     |
+| setcover_grid     | 209,615            | 0.68        | 6.0   | 1.000    |  0.262     |
+| setcover_perchild | 213,575            | 0.04        | 6.0   | 1.000    |  0.302     |
+
+`kmedoids_ortools` produces the shortest fleet distance and the most spatially compact clusters; the Set Cover variants are the speed/coverage sweet spot. See `docs/BENCHMARK_INSIGHTS.md` for a full discussion across N ∈ {50, 100, 200, 400}.
+
+## Methodology (baseline pipeline)
 
 ### 1. Road-network distances
 
@@ -137,28 +162,37 @@ $$
 
 ```bash
 ├── src/
-│   ├── data_generation.py
-│   ├── clustering.py
-│   └── tsp_solver.py
+│   ├── data_generation.py          # baseline: OSMnx scenario generator
+│   ├── clustering.py               # baseline: capacitated k-medoids
+│   ├── tsp_solver.py               # baseline: OR-Tools per-cluster TSP
+│   └── benchmarks/                 # unified benchmarking harness
+│       ├── run_benchmark.py        # CLI entry point
+│       ├── core/                   # Scenario, Solver ABC, Solution, metrics
+│       ├── adapters/               # 5 algorithm adapters
+│       ├── data/                   # shared scenario generator + zones
+│       └── viz/                    # plotter (single map + comparison grid)
+├── results/
+│   ├── runs.csv                    # one row per (algo, N, seed)
+│   ├── summary.md                  # pivoted mean ± std tables
+│   ├── scalability.png             # latency vs N (log-y)
+│   └── plots/                      # per-scenario maps + 5-up grids
+├── docs/
+│   ├── BENCHMARK_INSIGHTS.md       # comparative evaluation write-up
+│   └── latex/                      # paper source
 ├── pyproject.toml
 ├── scenario_data.npz
 ├── clustering_result.npz
 ├── tsp_result.npz
-└── cache
+└── cache/                          # OSMnx graph cache
 ```
 
 ## Requirements
 
 - Python 3.14+
-- Dependencies are defined in pyproject.toml:
-  - numpy
-  - networkx
-  - osmnx
-  - kmedoids
-  - ortools
-  - matplotlib
-  - contextily
-  - tqdm
+- Dependencies are defined in `pyproject.toml`:
+  - numpy, networkx, osmnx, kmedoids, ortools
+  - pulp (Set Cover ILPs), shapely (zone polygons), scikit-learn (silhouette), pandas
+  - matplotlib, contextily, tqdm
 
 ## Installation
 
@@ -179,10 +213,26 @@ pip install -e .
 
 ## How To Run
 
-Run the pipeline in order from the repository root:
+### Baseline pipeline (single algorithm, three scripts)
+
+Run from the repository root:
 
 ```bash
 python src/data_generation.py
 python src/clustering.py
 python src/tsp_solver.py
 ```
+
+### Benchmark sweep (all algorithms)
+
+```bash
+# full default sweep: N ∈ {50, 100, 200, 400} × 3 seeds × 5 algorithms (~45 min)
+python -m src.benchmarks.run_benchmark
+
+# quick smoke test
+python -m src.benchmarks.run_benchmark \
+    --densities 100 --seeds 1 \
+    --algos kmedoids_ortools genetic
+```
+
+Outputs land in `results/` (CSV + summary + plots) and are written incrementally so a crash mid-sweep does not lose data.

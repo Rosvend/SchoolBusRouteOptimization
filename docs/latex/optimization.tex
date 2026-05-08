@@ -45,20 +45,120 @@ El proyecto fue desarrollado en Python utilizando las siguientes librerías:
     \item \textbf{NumPy} para operaciones matriciales
     \item \textbf{NetworkX} para manejo de grafos
     \item \textbf{OSMNX} para integración con OpenStreetMap
-    \item \textbf{kmedoids} para clustering
-    \item \textbf{Google OR-Tools} para optimización de rutas
-    \item \textbf{Matplotlib} para visualización
-    \item \textbf{Contextily} para renderización de mapas
+    \item \textbf{kmedoids} para clustering por medoides (FasterPAM)
+    \item \textbf{Google OR-Tools} para optimización TSP/CVRPTW
+    \item \textbf{PuLP} (con CBC) para los modelos de Set Cover
+    \item \textbf{Shapely} para operaciones geométricas con polígonos de zonas
+    \item \textbf{scikit-learn} para el cómputo del índice de silueta
+    \item \textbf{pandas} para la agregación de resultados
+    \item \textbf{Matplotlib} y \textbf{Contextily} para visualización con mapas base
 \end{itemize}
 
-La estructura principal del repositorio es:
+La estructura del repositorio comprende los scripts originales del pipeline de referencia y un nuevo módulo de evaluación comparativa:
 
 \begin{verbatim}
 src/
-|-- data_generation.py
-|-- clustering.py
-`-- tsp_solver.py
+|-- data_generation.py    (script original)
+|-- clustering.py         (script original)
+|-- tsp_solver.py         (script original)
+`-- benchmarks/
+    |-- core/             (Scenario, Solver,
+    |                       Solution, metrics)
+    |-- data/             (generador de
+    |                       escenarios + zonas)
+    |-- adapters/         (5 algoritmos)
+    |-- viz/              (plotter unificado)
+    `-- run_benchmark.py  (CLI)
 \end{verbatim}
+
+\section{EVALUACIÓN COMPARATIVA}
+
+Para comparar empíricamente las distintas estrategias de solución desarrolladas por el equipo se construyó un \emph{harness} de evaluación unificado bajo una interfaz \texttt{Solver} común.
+Cada algoritmo se expone como un adaptador que recibe un \texttt{Scenario} (mismo grafo vial, mismas localizaciones de niños, misma capacidad de bus) y devuelve un \texttt{Solution} (lista de rutas y, opcionalmente, etiquetas de cluster).
+Esto garantiza que las cinco metodologías se evalúen sobre datos idénticos y bajo las mismas restricciones.
+
+\subsection{Algoritmos evaluados}
+
+\begin{enumerate}
+    \item \textbf{K-medoids + OR-Tools TSP} (pipeline base): clustering capacitado por k-medoides con asignación min-cost flow seguido de TSP por cluster con OR-Tools.
+    \item \textbf{CVRPTW por zonas}: 6 zonas geográficas fijas (comunas y municipios del Valle de Aburrá) resueltas con un CVRPTW de OR-Tools con ventanas de tiempo, tiempo de abordaje y duración máxima de ruta.
+    \item \textbf{Set Cover por niño}: cada niño semilla genera una ruta candidata por empaque NN sobre la matriz de distancias; PuLP/CBC selecciona el mínimo número de rutas que cubren todos los niños.
+    \item \textbf{Set Cover sobre rejilla}: semillas en una rejilla cartesiana sobre la región; cada semilla produce una ruta candidata mediante TSP \emph{greedy}; la ILP minimiza la distancia total cubriendo a todos los niños.
+    \item \textbf{Algoritmo Genético (GA)}: cromosoma como permutación de niños, decodificador codicioso por capacidad, fitness igual a la distancia total de la flota; operadores OX (order crossover), mutación por intercambio, selección por torneo, elitismo y refinamiento 2-opt.
+\end{enumerate}
+
+\subsection{Diseño experimental}
+
+Se generaron escenarios aleatorios sobre el grafo vial real de Medellín y el Valle de Aburrá (OSMnx, componente fuertemente conexo más grande) variando la densidad estudiantil $N \in \{50, 100, 200, 400\}$ y tres semillas distintas por densidad, lo que produce 12 escenarios y un total de 60 corridas (5 algoritmos $\times$ 12 escenarios).
+Cada escenario comparte el mismo nodo escolar (UPB), la misma capacidad de bus $C=20$ y la misma matriz de distancias direccionales sobre el camino más corto.
+Las métricas registradas son: distancia total de la flota, latencia computacional (tiempo de pared), número de buses utilizados, cobertura, índice de silueta sobre la matriz simétrica de distancias y violaciones de capacidad.
+
+\subsection{Resultados}
+
+La Tabla~\ref{tab:fleet} resume la distancia total de la flota (media $\pm$ desviación estándar sobre 3 semillas) por algoritmo y densidad.
+La Tabla~\ref{tab:latency} reporta la latencia y la Figura~\ref{fig:scalability} la curva de escalabilidad.
+
+\begin{table}[h]
+\centering
+\caption{Distancia total de la flota (km), media $\pm$ desv. estándar sobre 3 semillas.}
+\label{tab:fleet}
+\small
+\begin{tabular}{lcccc}
+\hline
+\textbf{Algoritmo} & $N{=}50$ & $N{=}100$ & $N{=}200$ & $N{=}400$ \\
+\hline
+CVRPTW zonas$^\ast$ & 134$\pm$4 & 198$\pm$16 & 356$\pm$27 & 590$\pm$46 \\
+K-medoids+TSP       & 193$\pm$16 & 280$\pm$13 & 398$\pm$19 & \textbf{641$\pm$13} \\
+SetCover rejilla    & 235$\pm$26 & 344$\pm$26 & 509$\pm$17 & 828$\pm$35 \\
+SetCover por niño   & 324$\pm$29 & 396$\pm$28 & 557$\pm$23 & 904$\pm$18 \\
+Algoritmo Genético  & 204$\pm$18 & 336$\pm$22 & 613$\pm$24 & 1438$\pm$18 \\
+\hline
+\end{tabular}
+\\[2pt]
+\footnotesize $^\ast$ CVRPTW deja entre 7\% y 13\% de los niños sin servir (cobertura $\le 0.93$); su distancia, por tanto, no es directamente comparable.
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Latencia (segundos), media sobre 3 semillas.}
+\label{tab:latency}
+\small
+\begin{tabular}{lcccc}
+\hline
+\textbf{Algoritmo} & $N{=}50$ & $N{=}100$ & $N{=}200$ & $N{=}400$ \\
+\hline
+SetCover por niño   & 0.01 & 0.02 & 0.04 & 0.16 \\
+SetCover rejilla    & 0.24 & 0.58 & 1.51 & 9.08 \\
+Algoritmo Genético  & 7.4  & 21.3 & 52.7 & 115.9 \\
+K-medoids+TSP       & 15.0 & 25.0 & 50.2 & 101.6 \\
+CVRPTW zonas        & 100  & 100  & 100  & 100 \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\columnwidth]{figures/scalability.png}
+\caption{Latencia media frente al tamaño del problema (escala log).}
+\label{fig:scalability}
+\end{figure}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/comparison_grid_N200.png}
+\caption{Soluciones de los cinco algoritmos sobre el mismo escenario ($N{=}200$, semilla 1).
+De izquierda a derecha y de arriba a abajo: K-medoids+TSP, CVRPTW por zonas, Set Cover por niño, Set Cover sobre rejilla, Algoritmo Genético.}
+\label{fig:grid}
+\end{figure*}
+
+\subsection{Hallazgos principales}
+
+\begin{itemize}
+    \item Bajo la restricción de cobertura completa, \textbf{K-medoids + OR-Tools TSP} es el algoritmo de menor distancia total a $N{=}400$ (641~km, vs.\ 828~km de Set Cover sobre rejilla y 904~km de Set Cover por niño), con latencia que crece linealmente con el número de clusters.
+    \item El \textbf{CVRPTW zonal} produce las distancias absolutas más bajas, pero a costa de dejar de 7\% a 13\% de los niños sin servir cuando el límite de duración por ruta no permite servirlos. Este hallazgo motiva relajar \texttt{MAX\_ROUTE\_MINUTES} o usar más buses por zona.
+    \item Las dos variantes de \textbf{Set Cover} ofrecen el mejor compromiso latencia/cobertura: $\le 10$~s para $N{=}400$ con cobertura 100\%, aunque su calidad de ruta queda 30--40\% por encima del óptimo de K-medoids+TSP debido al uso de tours por vecino más cercano.
+    \item El \textbf{Algoritmo Genético} con codificación por permutación y decodificador codicioso degrada con el tamaño: a $N{=}400$ produce 1438~km, más del doble que K-medoids+TSP. La silueta negativa indica clusters dispersos: el operador de partición no respeta la proximidad espacial. Esto refuerza la conclusión, conocida en la literatura de VRP, de que un GA \emph{plano} sin operadores conscientes de la topología requiere muchas más generaciones o un esquema de codificación distinto (por ejemplo, codificación por rutas con operadores de inserción/2-opt internos).
+\end{itemize}
 
 % ... [Rest of your sections remain the same] ...
 

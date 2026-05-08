@@ -247,3 +247,10 @@ __marimo__/
 *.blg
 *.run.xml
 *.pdf
+
+# Benchmarks
+results/
+cache/medellin_valle_drive.graphml
+
+# Claude Code internal state
+.claude/

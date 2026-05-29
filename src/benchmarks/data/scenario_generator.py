@@ -20,7 +20,7 @@ from . import zone_definitions as zd
 PLACE = "Medellin, Colombia"
 BBOX = dict(north=6.435, south=6.030, east=-75.330, west=-75.680)
 ORIGIN_LONLAT = (-75.58683269546758, 6.243283526198216)  # UPB
-
+# TODO: Restrain further to only metro area polygon to avoid nearby towns or mountain corregimientos
 DEFAULT_BUS_CAPACITY = 20
 
 CACHE_DIR = Path("cache")

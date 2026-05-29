@@ -4,7 +4,7 @@ import contextily as ctx
 import geopandas as gpd
 from shapely.geometry import Point
 
-from MultiobjectiveSectorial import GeographicClusterer, ClusteringConfig, prepare_data_from_graph
+from Clustering.MultiobjectiveSectorial0 import GeographicClusterer, ClusteringConfig, prepare_data_from_graph
 
 
 
@@ -28,8 +28,8 @@ print(f"Nodos: {n}")
 print(f"Índice colegio: {origin_idx}")
 print(f"Capacidad bus: {bus_capacity}")
 
-# 🔍 DIAGNÓSTICO: Ver rango de coordenadas
-print(f"\n🔍 Rango de coordenadas:")
+# DIAGNÓSTICO: Ver rango de coordenadas
+print("\nRango de coordenadas:")
 print(f"   X: [{x.min():.6f}, {x.max():.6f}]")
 print(f"   Y: [{y.min():.6f}, {y.max():.6f}]")
 print(f"   Colegio: ({x[origin_idx]:.6f}, {y[origin_idx]:.6f})")
@@ -41,10 +41,10 @@ print(f"   Colegio: ({x[origin_idx]:.6f}, {y[origin_idx]:.6f})")
 
 if np.nanmax(np.abs(x)) > 1000 and np.nanmax(np.abs(y)) > 1000:
     source_crs = "EPSG:32618"
-    print("\n✅ Coordenadas detectadas como proyectadas en metros → usando EPSG:32618")
+    print("\nCoordenadas detectadas como proyectadas en metros -> usando EPSG:32618")
 else:
     source_crs = "EPSG:4326"
-    print("\n✅ Coordenadas detectadas como geográficas → usando EPSG:4326")
+    print("\nCoordenadas detectadas como geográficas -> usando EPSG:4326")
 
 
 # ============================
@@ -79,7 +79,7 @@ clusterer = GeographicClusterer(config)
 # 5. ENTRENAR
 # ============================
 
-print("\n🔄 Ejecutando clustering...")
+print("\nEjecutando clustering...")
 clusterer.fit(
     node_ids=node_ids,
     coords=coords,
@@ -95,7 +95,7 @@ labels = clusterer.labels_
 # 6. DEBUG
 # ============================
 
-print("\n📊 RESULTADOS DEL CLUSTERING:")
+print("\nRESULTADOS DEL CLUSTERING:")
 unique = np.unique(labels)
 print(f"   Clusters encontrados: {unique}")
 
@@ -109,7 +109,7 @@ for c in unique:
 # 7. GRAFICAR (MAPA REAL)
 # ============================
 
-print("\n🗺️  Generando visualización sobre mapa de Medellín...")
+print("\nGenerando visualización sobre mapa de Medellín...")
 
 gdf_wgs84 = gpd.GeoDataFrame(
     {"cluster": labels},
@@ -159,9 +159,9 @@ try:
         source=ctx.providers.OpenStreetMap.Mapnik,
         crs=gdf_mercator.crs
     )
-    print("   ✅ Mapa base agregado exitosamente")
+    print("   Mapa base agregado exitosamente")
 except Exception as e:
-    print(f"   ⚠️  Error al agregar mapa base: {e}")
+    print(f"   Error al agregar mapa base: {e}")
     ax.set_facecolor("#e8e8e8")
 
 minx, miny, maxx, maxy = gdf_mercator.total_bounds
@@ -203,7 +203,7 @@ plt.tight_layout()
 
 output_file = "clusters_medellin_rutas_escolares.png"
 plt.savefig(output_file, dpi=300, bbox_inches='tight', facecolor='white')
-print(f"\n💾 Imagen guardada en: {output_file}")
+print(f"\nImagen guardada en: {output_file}")
 
 plt.show(block=True)
 
@@ -213,12 +213,12 @@ plt.show(block=True)
 # ============================
 
 print("\n" + "="*70)
-print("📊 ESTADÍSTICAS DE CLUSTERING")
+print("ESTADÍSTICAS DE CLUSTERING")
 print("="*70)
 
 stats = clusterer.get_cluster_stats()
 
-print(f"\n🚌 RESUMEN DE RUTAS:")
+print(f"\nRESUMEN DE RUTAS:")
 print(f"   Total de rutas generadas: {stats['n_clusters']}")
 print(f"   Tamaños de rutas: {stats['cluster_sizes']}")
 print(f"   Tamaño promedio: {np.mean(stats['cluster_sizes']):.1f} paradas/ruta")
@@ -226,15 +226,15 @@ print(f"   Tamaño mínimo: {min(stats['cluster_sizes'])} paradas")
 print(f"   Tamaño máximo: {max(stats['cluster_sizes'])} paradas")
 print(f"   Desviación estándar: {np.std(stats['cluster_sizes']):.2f}")
 
-print(f"\n📏 DISTANCIAS:")
+print(f"\nDISTANCIAS:")
 print(f"   Distancia intra-cluster promedio: {np.mean(stats['avg_intra_cluster_distance']):.2f} unidades")
 print(f"   Distancia promedio al colegio: {np.mean(stats['avg_distance_to_school']):.2f} unidades")
 
-print(f"\n⚙️  PARÁMETROS USADOS:")
-print(f"   α (peso angular): {config.alpha}")
-print(f"   β (peso radial): {config.beta}")
+print(f"\nPARAMETROS USADOS:")
+print(f"   alpha (peso angular): {config.alpha}")
+print(f"   beta (peso radial): {config.beta}")
 print(f"   Capacidad máxima: {config.capacity}")
 print(f"   Iteraciones de refinamiento: {config.refinement_iterations}")
 
-print("\n✅ Proceso completado exitosamente")
+print("\nProceso completado exitosamente")
 print("="*70)

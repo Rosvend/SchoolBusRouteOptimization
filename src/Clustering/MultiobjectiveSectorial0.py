@@ -22,6 +22,7 @@ class ClusteringConfig:
     beta: float = 0.4   # Peso del componente radial [0,1]
     distance_normalization: str = 'minmax'  # 'minmax' o 'zscore'
     refinement_iterations: int = 3  # Iteraciones de refinamiento
+    sector_penalty: int = 0  # Penalización para mantener sectorización inicial (>=0)
     
     def __post_init__(self):
         assert abs(self.alpha + self.beta - 1.0) < 1e-6, "alpha + beta debe ser 1.0"
@@ -82,26 +83,36 @@ class GeographicClusterer:
         # 1. Calcular ángulos y distancias normalizadas
         angles = self._compute_angles()
         normalized_distances = self._normalize_distances()
-        
-        # 2. Calcular score multiobjetivo
+
+        # 2. Calcular score multiobjetivo y etiquetas iniciales por barrido angular
         scores = self._compute_multiobjective_score(angles, normalized_distances)
-        
+        initial_labels = self._angular_sweep_assignment(angles, scores)
+
         # determinar número de clusters
         n_nodes = len(node_ids) - 1  # sin colegio
         k = int(np.ceil(n_nodes / self.config.capacity))
 
         print(f"Clusters (k): {k}")
 
-        # 1. medoids iniciales
-        medoids = self._get_initial_medoids(k)
+        # medoids iniciales a partir de labels (recompute similar a la otra versión)
+        medoids = self._recompute_medoids(initial_labels, k)
 
-        # 2. asignación con min-cost flow
-        self.labels_ = self._assign_with_min_cost_flow(medoids)
-        
+        # boucle iterativa: asignación por flow + recomputo de medoids
+        labels = initial_labels.copy()
+
+        for it in range(5):
+            print(f"Iteración {it+1}")
+            labels = self._assign_with_min_cost_flow(medoids, initial_labels)
+            new_medoids = self._recompute_medoids(labels, k)
+            if new_medoids == medoids:
+                print("Convergió")
+                break
+            medoids = new_medoids
+
+        self.labels_ = labels
         self.n_clusters_ = len(np.unique(self.labels_[self.labels_ >= 0]))
-        
-        print(f"✅ Clustering completado: {self.n_clusters_} clusters generados")
-        
+
+        print(f"Clustering completado: {self.n_clusters_} clusters generados")
         return self
     
     def _compute_angles(self) -> np.ndarray:
@@ -163,6 +174,30 @@ class GeographicClusterer:
             raise ValueError(f"Método de normalización desconocido: {self.config.distance_normalization}")
         
         return normalized
+
+    def _recompute_medoids(self, labels: np.ndarray, k: int) -> List[int]:
+        """
+        Recomputa medoids para k clusters usando combinación de costo interno
+        y distancia al colegio (similar a la versión experimental).
+        """
+        medoids = []
+        lambda_acc = 0.5
+
+        for c in range(k):
+            members = np.where(labels == c)[0]
+            if len(members) == 0:
+                continue
+
+            sub_dist_matrix = self.distance_matrix[np.ix_(members, members)]
+            dist_to_school = self.distances_to_school[members]
+
+            internal_costs = sub_dist_matrix.sum(axis=1)
+            combined_score = (1 - lambda_acc) * internal_costs + lambda_acc * dist_to_school
+
+            best_idx = members[int(np.argmin(combined_score))]
+            medoids.append(int(best_idx))
+
+        return medoids
     
     def _compute_multiobjective_score(self, 
                                       angles: np.ndarray,
@@ -464,6 +499,60 @@ class GeographicClusterer:
                 continue
             for c_idx, m in enumerate(medoid_indices):
                 cost = int(self.distance_matrix[i, m])  # Dijkstra real
+                G.add_edge(("n", i), ("c", c_idx), capacity=1, weight=cost)
+
+        # clusters → sink (capacidad bus)
+        for c_idx in range(k):
+            G.add_edge(("c", c_idx), "t", capacity=capacity, weight=0)
+
+        # demandas
+        G.nodes["s"]["demand"] = -(n - 1)  # sin colegio
+        G.nodes["t"]["demand"] = (n - 1)
+
+        flow = nx.min_cost_flow(G)
+
+        labels = np.full(n, -1)
+
+        for i in range(n):
+            if i == self.school_idx:
+                continue
+            for c_idx in range(k):
+                if flow[("n", i)].get(("c", c_idx), 0) == 1:
+                    labels[i] = c_idx
+                    break
+
+        return labels
+
+    def _assign_with_min_cost_flow(self, medoid_indices, initial_labels=None):
+        """
+        Variante que admite penalización para mantener la sectorización inicial.
+        Si `self.config.sector_penalty > 0` y se pasa `initial_labels`, se suma
+        la penalización al costo cuando la asignación difiere.
+        """
+        import networkx as nx
+
+        n = len(self.coords)
+        capacity = self.config.capacity
+        k = len(medoid_indices)
+
+        G = nx.DiGraph()
+
+        # source → nodos
+        for i in range(n):
+            if i == self.school_idx:
+                continue
+            G.add_edge("s", ("n", i), capacity=1, weight=0)
+
+        # nodos → clusters (costo = distancia + posible penalización)
+        for i in range(n):
+            if i == self.school_idx:
+                continue
+            for c_idx, m in enumerate(medoid_indices):
+                cost = int(self.distance_matrix[i, m])
+                if initial_labels is not None and self.config.sector_penalty > 0:
+                    if initial_labels[i] != c_idx:
+                        cost += int(self.config.sector_penalty)
+
                 G.add_edge(("n", i), ("c", c_idx), capacity=1, weight=cost)
 
         # clusters → sink (capacidad bus)

@@ -1,3 +1,9 @@
+% ===================================================================
+%  School Bus Routing Problem (SBRP) -- references
+%  Curated baseline: Mendeley "Optimizacion UPB" group + OR/tooling classics.
+% ===================================================================
+
+% --- SBRP reviews and school-bus-specific work ---------------------
 @article{Park2010TheReview,
     title = {{The school bus routing problem: A review}},
     year = {2010},
@@ -34,21 +40,175 @@
     keywords = {heuristics, multi-objective, optimisation, transport}
 }
 
+% --- Cluster-first, route-second ----------------------------------
 @techreport{CakirRevisitingProblem,
     title = {{Revisiting Cluster First, Route Second for the Vehicle Routing Problem}},
     author = {Cakir, Fahrettin and Street, W. Nick and Thomas, Barrett W.},
-    institution = {University of Iowa}
+    institution = {University of Iowa},
+    year = {2015}
 }
 
 @article{Comert2018AStudy,
     title = {{A cluster first-route second approach for a capacitated vehicle routing problem: a case study}},
     year = {2018},
     journal = {International Journal of Procurement Management},
-    author = {Comert, Serap Ercan and Yazgan, Harun Resit and K{\i}r, Sena and Yener, Furkan}
+    author = {Comert, Serap Ercan and Yazgan, Harun Resit and K{\i}r, Sena and Yener, Furkan},
+    volume = {11},
+    number = {4},
+    pages = {399--419}
 }
 
+% --- TSP solving heuristics ---------------------------------------
 @techreport{HelsgaunAnHeuristic,
     title = {{An Effective Implementation of the Lin-Kernighan Traveling Salesman Heuristic}},
     author = {Helsgaun, Keld},
-    institution = {Roskilde University}
+    institution = {Roskilde University},
+    year = {2000}
+}
+
+@article{Dahiya2018TSPReview,
+    title = {{Literature Review on Travelling Salesman Problem}},
+    author = {Dahiya, Chetna and Sangwan, Shabnam},
+    journal = {International Journal of Research},
+    volume = {5},
+    number = {16},
+    pages = {1152--1156},
+    year = {2018},
+    issn = {2348-6848}
+}
+
+@article{Joshi2019GCN,
+    title = {{An Efficient Graph Convolutional Network Technique for the Travelling Salesman Problem}},
+    author = {Joshi, Chaitanya K. and Laurent, Thomas and Bresson, Xavier},
+    journal = {arXiv preprint arXiv:1906.01227},
+    year = {2019}
+}
+
+% --- Metaheuristics for routing -----------------------------------
+@article{Baranwal2016DAVRPTW,
+    title = {{Vehicle Routing Problem with Time Windows: A Deterministic Annealing approach}},
+    author = {Baranwal, Mayank and Parekh, Pratik M. and Marla, Lavanya and Salapaka, Srinivasa M. and Beck, Carolyn L.},
+    journal = {arXiv preprint arXiv:1604.03590},
+    year = {2016}
+}
+
+@article{Hatamlou2018BlackHole,
+    title = {{Solving travelling salesman problem using black hole algorithm}},
+    author = {Hatamlou, Abdolreza},
+    journal = {Soft Computing},
+    volume = {22},
+    number = {24},
+    pages = {8167--8175},
+    year = {2018},
+    doi = {10.1007/s00500-017-2760-y},
+    issn = {14337479}
+}
+
+% --- Shape / geometry-based clustering ----------------------------
+@article{Akitaya2021Subtrajectory,
+    title = {{Subtrajectory Clustering: Finding Set Covers for Set Systems of Subcurves}},
+    author = {Akitaya, Hugo A. and Br{\"{u}}ning, Frederik and Chambers, Erin and Driemel, Anne},
+    journal = {arXiv preprint arXiv:2103.06040},
+    year = {2021}
+}
+
+% ===================================================================
+%  Essential OR / tooling classics
+% ===================================================================
+@article{DantzigRamser1959Truck,
+    title = {{The Truck Dispatching Problem}},
+    author = {Dantzig, George B. and Ramser, John H.},
+    journal = {Management Science},
+    volume = {6},
+    number = {1},
+    pages = {80--91},
+    year = {1959},
+    doi = {10.1287/mnsc.6.1.80}
+}
+
+@article{ClarkeWright1964Savings,
+    title = {{Scheduling of Vehicles from a Central Depot to a Number of Delivery Points}},
+    author = {Clarke, G. and Wright, J. W.},
+    journal = {Operations Research},
+    volume = {12},
+    number = {4},
+    pages = {568--581},
+    year = {1964},
+    doi = {10.1287/opre.12.4.568}
+}
+
+@article{Croes1958TwoOpt,
+    title = {{A Method for Solving Traveling-Salesman Problems}},
+    author = {Croes, G. A.},
+    journal = {Operations Research},
+    volume = {6},
+    number = {6},
+    pages = {791--812},
+    year = {1958},
+    doi = {10.1287/opre.6.6.791}
+}
+
+@book{Holland1992Adaptation,
+    title = {{Adaptation in Natural and Artificial Systems: An Introductory Analysis with Applications to Biology, Control, and Artificial Intelligence}},
+    author = {Holland, John H.},
+    publisher = {MIT Press},
+    address = {Cambridge, MA},
+    year = {1992}
+}
+
+@article{Voudouris1999GLS,
+    title = {{Guided local search and its application to the traveling salesman problem}},
+    author = {Voudouris, Christos and Tsang, Edward},
+    journal = {European Journal of Operational Research},
+    volume = {113},
+    number = {2},
+    pages = {469--499},
+    year = {1999},
+    doi = {10.1016/S0377-2217(98)00099-X}
+}
+
+@book{KaufmanRousseeuw1990PAM,
+    title = {{Finding Groups in Data: An Introduction to Cluster Analysis}},
+    author = {Kaufman, Leonard and Rousseeuw, Peter J.},
+    publisher = {John Wiley \& Sons},
+    address = {New York},
+    year = {1990},
+    doi = {10.1002/9780470316801}
+}
+
+@article{Rousseeuw1987Silhouettes,
+    title = {{Silhouettes: A graphical aid to the interpretation and validation of cluster analysis}},
+    author = {Rousseeuw, Peter J.},
+    journal = {Journal of Computational and Applied Mathematics},
+    volume = {20},
+    pages = {53--65},
+    year = {1987},
+    doi = {10.1016/0377-0427(87)90125-7}
+}
+
+@article{Boeing2017OSMnx,
+    title = {{OSMnx: New methods for acquiring, constructing, analyzing, and visualizing complex street networks}},
+    author = {Boeing, Geoff},
+    journal = {Computers, Environment and Urban Systems},
+    volume = {65},
+    pages = {126--139},
+    year = {2017},
+    doi = {10.1016/j.compenvurbsys.2017.05.004}
+}
+
+@article{Pedregosa2011Sklearn,
+    title = {{Scikit-learn: Machine Learning in Python}},
+    author = {Pedregosa, F. and Varoquaux, G. and Gramfort, A. and Michel, V. and Thirion, B. and Grisel, O. and Blondel, M. and Prettenhofer, P. and Weiss, R. and Dubourg, V. and Vanderplas, J. and Passos, A. and Cournapeau, D. and Brucher, M. and Perrot, M. and Duchesnay, E.},
+    journal = {Journal of Machine Learning Research},
+    volume = {12},
+    pages = {2825--2830},
+    year = {2011}
+}
+
+@misc{PerronFurnon2023ORTools,
+    title = {{OR-Tools}},
+    author = {Perron, Laurent and Furnon, Vincent},
+    howpublished = {Google},
+    note = {\url{https://developers.google.com/optimization/}},
+    year = {2023}
 }

@@ -1,176 +1,682 @@
-\documentclass[10pt,twocolumn]{article}
+% =====================================================================
+%  CITIS 2026 submission -- Springer LNNS (LLNCS) proceedings template.
+%  DOUBLE-BLIND: author/affiliation/identifying info removed from the body.
+%
+%  CAMERA-READY AUTHOR BLOCK (do NOT include in the blind submission):
+%    Roberto Hincapie, Roy Sandoval, Mariana Arbelaez, Sara Ruaga
+%    Ingenieria en Ciencia de Datos, Universidad Pontificia Bolivariana, 2026
+%  (Author list reduced from 5 to 4 to comply with the CITIS 4-author cap;
+%   Susana Toro Castano removed per author decision.)
+% =====================================================================
+\documentclass[runningheads]{llncs}
 
-\usepackage[T1]{fontenc} % Better handling of accented characters like í
+\usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
-\usepackage[spanish,english]{babel} 
-\usepackage{xcolor}
-\usepackage{amsmath, amssymb}
+\usepackage{amsmath,amssymb}
 \usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
 \usepackage{url}
-\usepackage{geometry}
-\geometry{margin=2cm}
-
-\title{Capacitated School Bus Routing via Clustering and Network-Based Optimization \\ 
-\large Enrutamiento Capacitado de Transporte Escolar mediante Clustering y Optimización Basada en Redes en Medellín}
-
-\author{Susana Toro Castaño, Roberto Hincapié, Roy Sandoval, Mariana Arbelaez, Sara Ruaga \\
-\small Ingeniería en Ciencia de Datos, Universidad Pontificia Bolivariana, 2026}
-
-\date{} 
 
 \begin{document}
+
+\title{Capacitated School Bus Routing via Clustering and
+Network-Based Optimization: A Comparative Benchmark of Six Strategies
+on a Real Road Network}
+
+\titlerunning{Capacitated School Bus Routing: A Comparative Benchmark}
+
+% --- Anonymized for double-blind review ---
+\author{Anonymous Author(s)}
+\authorrunning{Anonymous}
+\institute{Anonymized for double-blind review}
 
 \maketitle
 
 \begin{abstract}
-This project presents a heuristic methodology for solving the School Bus Routing Problem using real road-network data from Medellín, Colombia.
-The proposed approach integrates graphs extracted from OpenStreetMap, capacitated clustering using k-medoids with minimum-cost flow assignment, and route optimization through Google OR-Tools.
-The system models a single school as the main depot and assigns student stops to buses under capacity constraints.
-Distances are computed over the actual road network using shortest paths, after which students are grouped while respecting vehicle capacities, and finally a closed route is optimized for each bus using a Traveling Salesman Problem (TSP)-style formulation.
-The methodology generates feasible and efficient routes while minimizing the total fleet distance in a realistic urban transportation environment.
-We further benchmark six clustering- and covering-based routing strategies on identical Medellín road-network scenarios under a common solver interface, and find that capacitated k-medoids and a multi-objective sectorial clustering attain the lowest fleet distance among the full-coverage methods.
+The School Bus Routing Problem (SBRP) is an NP-hard combinatorial
+optimization problem that generalizes the capacitated vehicle routing
+problem and underpins a service used daily by millions of students.
+Although the literature offers many heuristic and metaheuristic
+strategies, head-to-head comparisons under identical, realistic
+conditions remain scarce, which makes it difficult for practitioners
+to choose a method. We present a unified benchmark that evaluates six
+clustering- and covering-based routing strategies---capacitated
+k-medoids, a multi-objective sectorial clustering, a zonal
+capacitated vehicle routing problem with time windows (CVRPTW), two
+set-covering integer programs, and a genetic algorithm---on identical
+scenarios generated from the real OpenStreetMap road network of
+Medell\'in (Colombia). All methods share a common solver interface,
+directed shortest-path distances, a single depot, and a bus capacity
+of twenty, and are measured on fleet distance, computation time,
+fleet size, coverage and cluster cohesion across student densities
+$N\in\{50,100,200,400\}$ with three seeds each (72 runs). A Friedman
+test confirms that the strategies differ significantly in both fleet
+distance ($p<10^{-8}$) and latency ($p<10^{-7}$). Capacitated
+k-medoids and sectorial clustering are statistically tied for the
+shortest fleet distance (Wilcoxon $p=0.68$), while set-covering
+formulations are orders of magnitude faster at a quality cost and a
+flat genetic encoding degrades sharply with scale. We distill the
+trade-offs into practical guidance for SBRP solver selection.
+
+\keywords{School Bus Routing Problem \and Capacitated clustering
+\and Vehicle routing \and Metaheuristics \and Set covering
+\and Road-network optimization.}
 \end{abstract}
 
-% I REMOVED THE EXTRA \begin{document} AND \maketitle FROM HERE
+% =====================================================================
+\section{Introduction}
+% =====================================================================
+The School Bus Routing Problem (SBRP) consists of planning a fleet of
+buses that collects students from a set of stops and delivers them to
+their school while respecting operational constraints such as vehicle
+capacity, maximum riding time and bell-time windows~\cite{Park2010TheReview}.
+It is a generalization of the capacitated vehicle routing problem
+(CVRP), which itself descends from the truck-dispatching problem first
+formalized by Dantzig and Ramser~\cite{DantzigRamser1959Truck}, and it
+is therefore NP-hard: the size of the feasible solution space grows
+super-exponentially with the number of stops, so exact methods are
+intractable for realistic instances. As a result, practical SBRP
+solvers are overwhelmingly heuristic, and the survey by Park and
+Kim~\cite{Park2010TheReview} together with the more recent review of
+Ellegood et al.~\cite{Ellegood2020SchoolDirections} shows that the
+field is fragmented into many problem variants and solution paradigms
+whose relative merits are rarely measured on common ground.
 
-\section{INTRODUCCIÓN}
-La planificación de rutas escolares (\emph{School Bus Routing Problem}, SBRP) constituye un problema complejo de optimización combinatoria que generaliza al problema de enrutamiento de vehículos: se busca planificar una flota de buses que recoja a los estudiantes y los lleve a su colegio respetando restricciones de capacidad, tiempo máximo de viaje y ventanas horarias~\cite{Park2010TheReview}.
-La revisión de Park y Kim~\cite{Park2010TheReview} descompone el SBRP en subproblemas (preparación de datos, selección de paradas, generación de rutas, ajuste de horarios y programación), y trabajos más recientes confirman que la mayoría de las soluciones prácticas siguen siendo heurísticas y dependen del contexto~\cite{Ellegood2020SchoolDirections}.
+A classical and still dominant family of heuristics follows the
+\emph{cluster-first, route-second} paradigm: students are first
+grouped into capacity-feasible clusters, and a Traveling Salesman
+Problem (TSP) is then solved within each cluster, for which highly
+effective heuristics exist~\cite{HelsgaunAnHeuristic,Croes1958TwoOpt}.
+The clustering step can be guided by geometry~\cite{CakirRevisitingProblem},
+by classical partitioning algorithms~\cite{Comert2018AStudy}, or by
+multiple and often conflicting objectives such as simultaneously
+minimizing the number of buses and the students' riding
+time~\cite{Corberan2002HeuristicObjectives}. An orthogonal family
+formulates route selection directly as a set-covering integer
+program, and a third relies on population-based metaheuristics such as
+genetic, annealing or nature-inspired
+algorithms~\cite{Baranwal2016DAVRPTW,Hatamlou2018BlackHole}.
 
-Una familia clásica de heurísticas para la generación de rutas es el paradigma \emph{cluster-first, route-second}: primero se agrupan los estudiantes en conglomerados compatibles con la capacidad del bus y luego se resuelve un problema del agente viajero (TSP), para el cual se conocen heurísticas muy efectivas~\cite{HelsgaunAnHeuristic}, dentro de cada grupo~\cite{CakirRevisitingProblem,Comert2018AStudy}.
-El agrupamiento puede guiarse por objetivos múltiples y a menudo conflictivos, como minimizar simultáneamente el número de buses y el tiempo de viaje de los estudiantes~\cite{Corberan2002HeuristicObjectives}.
-En este trabajo implementamos y comparamos empíricamente seis estrategias de solución sobre escenarios idénticos generados a partir del grafo vial real de Medellín y el Valle de Aburrá, bajo una interfaz común que garantiza una evaluación justa.
-
-\section{IMPLEMENTACIÓN}
-
-El proyecto fue desarrollado en Python utilizando las siguientes librerías:
+The difficulty for a practitioner is that these strategies are
+typically published on different instances, with different distance
+models (Euclidean vs.\ road network), different objectives and
+different computational budgets, so their reported numbers cannot be
+compared directly. This paper addresses that gap. Our contributions
+are:
 
 \begin{itemize}
-    \item \textbf{NumPy} para operaciones matriciales
-    \item \textbf{NetworkX} para manejo de grafos
-    \item \textbf{OSMNX} para integración con OpenStreetMap
-    \item \textbf{kmedoids} para clustering por medoides (FasterPAM)
-    \item \textbf{Google OR-Tools} para optimización TSP/CVRPTW
-    \item \textbf{PuLP} (con CBC) para los modelos de Set Cover
-    \item \textbf{Shapely} para operaciones geométricas con polígonos de zonas
-    \item \textbf{scikit-learn} para el cómputo del índice de silueta
-    \item \textbf{pandas} para la agregación de resultados
-    \item \textbf{Matplotlib} y \textbf{Contextily} para visualización con mapas base
+\item A \textbf{unified benchmark harness} in which six SBRP solution
+strategies are exposed through one common interface and evaluated on
+\emph{identical} scenarios built from the real road network of
+Medell\'in and the Valle de Aburr\'a, under the same capacity,
+distance model and metrics.
+\item A \textbf{rigorous description} of each strategy, including a
+formal model, pseudocode and a worst-case complexity analysis,
+relating the implemented algorithms to their theoretical cost.
+\item A \textbf{statistically grounded comparison} across four student
+densities and three seeds (72 runs), using the non-parametric Friedman
+and Wilcoxon tests to separate genuine performance differences from
+noise.
+\item \textbf{Practical guidance}: we show that capacitated k-medoids
+and a sectorial multi-objective clustering are statistically tied for
+the best fleet distance, that set-covering integer programs are the
+speed/coverage sweet spot, and that a topology-agnostic genetic
+encoding scales poorly---together with an explanation of \emph{why}.
 \end{itemize}
 
-La estructura del repositorio comprende los scripts originales del pipeline de referencia y un nuevo módulo de evaluación comparativa:
+The remainder of the paper is organized as follows. Section~\ref{sec:related}
+reviews related work. Section~\ref{sec:problem} formalizes the problem.
+Section~\ref{sec:methods} describes the six strategies, their
+pseudocode and complexity. Section~\ref{sec:setup} details the
+experimental setup, Section~\ref{sec:results} reports the results, and
+Section~\ref{sec:discussion} discusses them. Section~\ref{sec:conclusions}
+concludes.
 
-\begin{verbatim}
-src/
-|-- data_generation.py    (script original)
-|-- clustering.py         (script original)
-|-- tsp_solver.py         (script original)
-`-- benchmarks/
-    |-- core/             (Scenario, Solver,
-    |                       Solution, metrics)
-    |-- data/             (generador de
-    |                       escenarios + zonas)
-    |-- adapters/         (6 algoritmos)
-    |-- viz/              (plotter unificado)
-    `-- run_benchmark.py  (CLI)
-\end{verbatim}
+% =====================================================================
+\section{Related Work}\label{sec:related}
+% =====================================================================
+\subsection{The School Bus Routing Problem}
+The SBRP has been studied for almost five decades. Park and
+Kim~\cite{Park2010TheReview} decompose it into five sub-problems---data
+preparation, bus-stop selection, route generation, route scheduling
+and bell-time adjustment---and observe that most contributions tackle
+one or two of these in isolation. The updated survey of Ellegood et
+al.~\cite{Ellegood2020SchoolDirections} reviews 64 newer publications
+and confirms that single-school, capacity-constrained route generation
+remains the most studied core, and that heuristic and metaheuristic
+methods dominate exact ones in practice. Corber\'an et
+al.~\cite{Corberan2002HeuristicObjectives} emphasize the inherently
+\emph{multi-objective} nature of the problem: minimizing the number of
+buses and minimizing student travel time are conflicting goals, and a
+good solver must navigate that trade-off rather than optimize a single
+scalar. Our benchmark adopts the single-school, capacitated, route-generation
+variant and reports several of these competing objectives side by side.
 
-\section{EVALUACIÓN COMPARATIVA}
+\subsection{Cluster-first, route-second}
+Clustering was central to early VRP algorithms and has seen renewed
+interest. Cakir et al.~\cite{CakirRevisitingProblem} revisit
+cluster-first, route-second with a shape-based clustering that forms
+clusters of a desired geometry relative to the depot, which is the
+conceptual ancestor of our sectorial strategy. Comert et
+al.~\cite{Comert2018AStudy} solve a capacitated VRP by first
+partitioning customers with k-means, k-medoids or random clustering
+and then routing each cluster, and report that medoid-based clustering
+yields the most robust routes---a finding our results corroborate on a
+real road network. The k-medoids/PAM family itself originates with
+Kaufman and Rousseeuw~\cite{KaufmanRousseeuw1990PAM}, and we use the
+FasterPAM variant for initialization. Geometry- and curve-based
+clustering continues to advance, e.g.\ the sub-trajectory set-cover
+formulation of Akitaya et al.~\cite{Akitaya2021Subtrajectory}, which
+also links clustering to set covering---the two paradigms we contrast.
 
-Para comparar empíricamente las distintas estrategias de solución desarrolladas por el equipo se construyó un \emph{harness} de evaluación unificado bajo una interfaz \texttt{Solver} común.
-Cada algoritmo se expone como un adaptador que recibe un \texttt{Scenario} (mismo grafo vial, mismas localizaciones de niños, misma capacidad de bus) y devuelve un \texttt{Solution} (lista de rutas y, opcionalmente, etiquetas de cluster).
-Esto garantiza que las seis metodologías se evalúen sobre datos idénticos y bajo las mismas restricciones.
+\subsection{Routing and metaheuristics}
+Within a cluster, route construction reduces to the TSP. The savings
+heuristic of Clarke and Wright~\cite{ClarkeWright1964Savings} and local
+search such as 2-opt~\cite{Croes1958TwoOpt} are the classical building
+blocks, while the Lin--Kernighan heuristic and its
+implementations~\cite{HelsgaunAnHeuristic} remain the state of the art
+for high-quality tours. Modern solvers wrap these in metaheuristics;
+Google OR-Tools~\cite{PerronFurnon2023ORTools}, which we use for the
+routing stage, drives local search with Guided Local
+Search~\cite{Voudouris1999GLS}. Population- and physics-inspired
+metaheuristics are also widely applied to routing: deterministic
+annealing for the VRP with time windows~\cite{Baranwal2016DAVRPTW},
+the black-hole algorithm for the TSP~\cite{Hatamlou2018BlackHole}, and
+genetic algorithms~\cite{Holland1992Adaptation}. More recently,
+learning-based approaches such as graph convolutional networks have
+been proposed for the TSP~\cite{Joshi2019GCN,Dahiya2018TSPReview}. We
+include a genetic algorithm as a representative metaheuristic and
+analyze why a topology-agnostic encoding underperforms the
+clustering-based pipelines at scale.
 
-\subsection{Algoritmos evaluados}
+% =====================================================================
+\section{Problem Formulation}\label{sec:problem}
+% =====================================================================
+\subsection{Notation and distances}
+Let the road network be a directed weighted graph $G=(V,E)$ with arc
+weights $w_e>0$. A single school (depot) $o\in V$ and a set of
+$n$ student stops $\mathcal{C}=\{1,\dots,n\}\subset V$ are given,
+together with a homogeneous fleet of buses of capacity $C$. For any
+pair $i,j\in V$ the road distance is the shortest-path cost
+\begin{equation}
+d_{ij}=\min_{p\in\mathcal{P}(i,j)}\sum_{e\in p} w_e ,
+\end{equation}
+where $\mathcal{P}(i,j)$ is the set of directed paths from $i$ to $j$;
+distances are in general asymmetric ($d_{ij}\neq d_{ji}$). Clustering
+algorithms that assume a metric use the symmetrized matrix
+\begin{equation}
+D^{\mathrm{sym}}_{ij}=\tfrac{1}{2}\,(d_{ij}+d_{ji}) ,
+\end{equation}
+whereas the routing stage uses the directed distances $d_{ij}$.
 
-\begin{enumerate}
-    \item \textbf{K-medoids + OR-Tools TSP} (pipeline base): clustering capacitado por k-medoides con asignación min-cost flow seguido de TSP por cluster con OR-Tools, siguiendo el paradigma \emph{cluster-first, route-second}~\cite{Comert2018AStudy}.
-    \item \textbf{Clustering sectorial (barrido angular)}: cada niño se puntúa mediante una combinación multiobjetivo de su posición angular y su distancia radial respecto al colegio~\cite{Corberan2002HeuristicObjectives}; un barrido angular los agrupa en sectores acotados por capacidad que luego se refinan con una asignación de flujo de costo mínimo en torno a medoides por cluster, y finalmente se resuelve un TSP por cluster con OR-Tools. Se inspira en los esquemas de agrupamiento por forma respecto al depósito~\cite{CakirRevisitingProblem}.
-    \item \textbf{CVRPTW por zonas}: 6 zonas geográficas fijas (comunas y municipios del Valle de Aburrá) resueltas con un CVRPTW de OR-Tools con ventanas de tiempo, tiempo de abordaje y duración máxima de ruta.
-    \item \textbf{Set Cover por niño}: cada niño semilla genera una ruta candidata por empaque NN sobre la matriz de distancias; PuLP/CBC selecciona el mínimo número de rutas que cubren todos los niños.
-    \item \textbf{Set Cover sobre rejilla}: semillas en una rejilla cartesiana sobre la región; cada semilla produce una ruta candidata mediante TSP \emph{greedy}; la ILP minimiza la distancia total cubriendo a todos los niños.
-    \item \textbf{Algoritmo Genético (GA)}: cromosoma como permutación de niños, decodificador codicioso por capacidad, fitness igual a la distancia total de la flota; operadores OX (order crossover), mutación por intercambio, selección por torneo, elitismo y refinamiento 2-opt.
-\end{enumerate}
+\subsection{Objective and constraints}
+The SBRP we address is a single-depot CVRP. A solution is a set of
+closed routes, one per bus, each starting and ending at $o$. The
+number of buses is lower-bounded by
+$k=\lceil n/C\rceil$. The objective is to minimize the total fleet
+distance
+\begin{equation}
+L_{\mathrm{total}}=\sum_{c}\sum_{(i,j)\in r_c} d_{ij}\,,
+\label{eq:obj}
+\end{equation}
+subject to: (i)~every student is served by exactly one bus (full
+coverage); (ii)~no route carries more than $C$ students; and
+(iii)~every route starts and ends at the depot. Because solving this
+CVRP exactly is intractable, we adopt the cluster-first, route-second
+decomposition into a capacitated assignment sub-problem followed by
+$k$ independent TSPs.
 
-\subsection{Diseño experimental}
+\subsection{Capacitated assignment sub-problem}
+Given current cluster representatives (medoids)
+$M=\{m_1,\dots,m_k\}$, the assignment of students to clusters is the
+binary program
+\begin{align}
+\min \quad & \sum_{i=1}^{n}\sum_{c=1}^{k} D^{\mathrm{sym}}_{i,m_c}\,x_{ic}
+\label{eq:assign-obj}\\
+\text{s.t.}\quad & \sum_{c=1}^{k} x_{ic}=1 \quad \forall i, \label{eq:assign-cover}\\
+& \sum_{i=1}^{n} x_{ic}\le C \quad \forall c, \label{eq:assign-cap}\\
+& x_{ic}\in\{0,1\},
+\end{align}
+where $x_{ic}=1$ iff student $i$ joins cluster $c$. As the constraint
+matrix of (\ref{eq:assign-obj})--(\ref{eq:assign-cap}) is totally
+unimodular, the program is solved to optimality as a minimum-cost flow
+in a four-layer network (source~$\to$~students~$\to$~medoids~$\to$~sink),
+avoiding a general integer solver. Each cluster's medoid is then
+recomputed as the within-cluster $1$-median
+$m_c=\arg\min_{h\in S_c}\sum_{i\in S_c} D^{\mathrm{sym}}_{ih}$, and the
+two steps alternate until the medoids stabilize.
 
-Se generaron escenarios aleatorios sobre el grafo vial real de Medellín y el Valle de Aburrá (OSMnx, componente fuertemente conexo más grande) variando la densidad estudiantil $N \in \{50, 100, 200, 400\}$ y tres semillas distintas por densidad, lo que produce 12 escenarios y un total de 72 corridas (6 algoritmos $\times$ 12 escenarios).
-Cada escenario comparte el mismo nodo escolar (UPB), la misma capacidad de bus $C=20$ y la misma matriz de distancias direccionales sobre el camino más corto.
-Las métricas registradas son: distancia total de la flota, latencia computacional (tiempo de pared), número de buses utilizados, cobertura, índice de silueta sobre la matriz simétrica de distancias y violaciones de capacidad.
+\subsection{Per-cluster routing sub-problem}
+For cluster $c$ with node set $V_c=S_c\cup\{o\}$ and binary arc
+variables $y_{ij}$, the route is the TSP tour
+\begin{align}
+\min \quad & \sum_{(i,j)\in V_c\times V_c} d_{ij}\,y_{ij}\\
+\text{s.t.}\quad & \textstyle\sum_{j\neq i} y_{ij}=1,\;\;
+\sum_{i\neq j} y_{ij}=1 \quad \forall i,j\in V_c,\\
+& \text{subtour-elimination constraints},\quad y_{ij}\in\{0,1\}.
+\end{align}
 
-\subsection{Resultados}
+\subsection{Set-covering formulation}
+An alternative that bypasses explicit clustering enumerates a pool
+$\mathcal{R}$ of capacity-feasible candidate routes and selects a
+subset. Minimizing the number of buses gives the set-cover program
+\begin{equation}
+\min \sum_{j\in\mathcal{R}} x_j \quad\text{s.t.}\quad
+\sum_{j:\,i\in R_j} x_j \ge 1\;\;\forall i\in\mathcal{C},\quad
+x_j\in\{0,1\},
+\label{eq:setcover}
+\end{equation}
+while replacing the objective by $\sum_j \mathrm{cost}_j\,x_j$ (the
+route length) minimizes distance instead. Both variants are solved
+with a branch-and-cut integer solver.
 
-La Tabla~\ref{tab:fleet} resume la distancia total de la flota (media $\pm$ desviación estándar sobre 3 semillas) por algoritmo y densidad.
-La Tabla~\ref{tab:latency} reporta la latencia y la Figura~\ref{fig:scalability} la curva de escalabilidad.
+% =====================================================================
+\section{Solution Strategies}\label{sec:methods}
+% =====================================================================
+\subsection{Common benchmark framework}
+All strategies are implemented as adapters behind a single
+\texttt{Solver} interface: each receives a \texttt{Scenario} (the same
+road graph, student locations, depot and capacity) and returns a
+\texttt{Solution} (a list of closed routes and, optionally, cluster
+labels). This guarantees that the six methods are evaluated on
+byte-identical inputs and scored by the same metric code, removing
+instance and implementation bias from the comparison. The framework is
+written in Python and relies on
+OSMnx~\cite{Boeing2017OSMnx} for road-network extraction, NetworkX for
+graph algorithms and minimum-cost flow,
+OR-Tools~\cite{PerronFurnon2023ORTools} for TSP/CVRPTW search,
+FasterPAM~\cite{KaufmanRousseeuw1990PAM} for medoid initialization, a
+branch-and-cut integer solver (CBC) for the set-covering programs, and
+scikit-learn~\cite{Pedregosa2011Sklearn} for the silhouette score.
 
-\begin{table}[h]
+\subsection{Capacitated k-medoids + OR-Tools (baseline)}
+The baseline instantiates the cluster-first, route-second
+decomposition exactly as formalized above (Algorithm~\ref{alg:kmedoids}):
+FasterPAM provides initial medoids, the capacitated assignment is
+solved by minimum-cost flow, medoids are recomputed, and the loop
+iterates to convergence before each cluster is routed with OR-Tools.
+
+\begin{algorithm}[t]
+\caption{Capacitated k-medoids + per-cluster TSP}
+\label{alg:kmedoids}
+\begin{algorithmic}[1]
+\Require symmetrized distances $D^{\mathrm{sym}}$, directed distances $d$,
+capacity $C$, depot $o$, iteration cap $T$
+\State $k \gets \lceil n/C\rceil$
+\State $M \gets \textsc{FasterPAM}(D^{\mathrm{sym}},k)$ \Comment{initial medoids}
+\Repeat
+  \State $x \gets \textsc{MinCostFlowAssign}(D^{\mathrm{sym}},M,C)$
+         \Comment{Eqs.~(\ref{eq:assign-obj})--(\ref{eq:assign-cap})}
+  \ForAll{clusters $S_c$}
+     \State $m_c \gets \arg\min_{h\in S_c}\sum_{i\in S_c} D^{\mathrm{sym}}_{ih}$
+  \EndFor
+\Until{$M$ unchanged \textbf{or} $T$ iterations}
+\ForAll{clusters $S_c$}
+  \State $r_c \gets \textsc{OrToolsTSP}(S_c\cup\{o\},d)$ \Comment{Guided Local Search}
+\EndFor
+\State \Return $\{r_c\}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Sectorial multi-objective clustering}
+The sectorial strategy (Algorithm~\ref{alg:sectorial}) replaces the
+purely distance-driven assignment by a geometric one inspired by
+shape-based clustering~\cite{CakirRevisitingProblem}. Each student is
+scored by a convex combination of its angular position and its radial
+distance with respect to the school,
+\begin{equation}
+s_i=\alpha\,\frac{\theta_i+\pi}{2\pi}+\beta\,\hat d_i,
+\qquad \alpha+\beta=1,
+\label{eq:sectorial-score}
+\end{equation}
+where $\theta_i=\operatorname{atan2}(y_i-y_o,\,x_i-x_o)$ and
+$\hat d_i$ is the min--max-normalized distance to the depot
+($\alpha=0.6,\beta=0.4$ by default). An angular sweep packs students
+into capacity-bounded sectors, which are then refined with the same
+minimum-cost-flow reassignment as the baseline, optionally penalizing
+moves that break the initial sweep. The result is a set of compact,
+wedge-shaped clusters that radiate from the school.
+
+\begin{algorithm}[t]
+\caption{Sectorial clustering}
+\label{alg:sectorial}
+\begin{algorithmic}[1]
+\Require student coords, school $o$, capacity $C$, weights $\alpha,\beta$,
+iteration cap $T$
+\ForAll{students $i$}
+  \State $\theta_i \gets \operatorname{atan2}(y_i-y_o,\,x_i-x_o)$;\;\;
+         $d_i \gets \mathrm{dist}(i,o)$
+\EndFor
+\State $\hat d \gets \textsc{MinMaxNormalize}(d)$
+\State $s_i \gets \alpha\,(\theta_i+\pi)/2\pi + \beta\,\hat d_i$
+       \Comment{Eq.~(\ref{eq:sectorial-score})}
+\State sort students by $s$; greedily pack into $\lceil n/C\rceil$
+       sectors of size $\le C$
+\Repeat
+  \State recompute medoids blending internal cost and distance to $o$
+  \State reassign via \textsc{MinCostFlow} with optional sector penalty
+\Until{convergence \textbf{or} $T$ iterations}
+\State route each cluster with \textsc{OrToolsTSP}
+\State \Return routes
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Zonal CVRPTW}
+This strategy partitions the metropolitan area into six fixed
+geographic zones (communes and municipalities of the Valle de
+Aburr\'a, by point-in-polygon test) and solves an independent CVRPTW
+per zone with OR-Tools. Beyond capacity it enforces a time dimension:
+travel time plus a $90$-second boarding time per stop, a maximum route
+duration of $75$ minutes, and a span-balancing penalty that
+discourages long routes. Unserved stops are allowed at a high penalty,
+so the method can leave a small fraction of students uncovered when the
+duration limit binds.
+
+\subsection{Set-covering integer programs}
+Two variants instantiate the set-cover model of
+Eq.~(\ref{eq:setcover}). The \emph{per-child} variant builds one
+candidate route per student by greedily packing its $C-1$ nearest
+neighbors, then selects the minimum number of routes covering all
+students. The \emph{grid} variant seeds candidates on a Cartesian grid
+whose spacing scales with student density, builds a greedy tour around
+each seed, and selects routes minimizing total distance subject to full
+coverage. Both are solved by branch-and-cut.
+
+\subsection{Genetic algorithm}
+The genetic algorithm (Algorithm~\ref{alg:ga}) represents a solution as
+a permutation of the $n$ students. A capacity-aware decoder splits the
+permutation into consecutive chunks of at most $C$ students and routes
+each chunk with a nearest-neighbor construction followed by a single
+2-opt~\cite{Croes1958TwoOpt} pass; the fitness is the resulting total
+fleet distance. Evolution uses tournament selection, order crossover
+(OX), swap mutation and elitism, and stops at a generation cap or after
+a stagnation window.
+
+\begin{algorithm}[t]
+\caption{Genetic algorithm with capacity-aware decoder}
+\label{alg:ga}
+\begin{algorithmic}[1]
+\Require capacity $C$, population $P$, generations $G$, mutation rate
+$p_m$, tournament size $t$, elites $e$
+\State initialize $P$ random permutations of $\{1,\dots,n\}$
+\State evaluate each via \textsc{Decode} (split by $C$; per chunk: NN $+$ 2-opt; sum $d$)
+\For{$g=1$ to $G$}
+  \State carry the $e$ best individuals (elitism)
+  \While{next generation incomplete}
+    \State $p_1,p_2 \gets \textsc{Tournament}(t)$
+    \State $\textit{child} \gets \textsc{OX-Crossover}(p_1,p_2)$
+    \If{$\mathrm{rand}()<p_m$} $\textit{child}\gets\textsc{SwapMutation}(\textit{child})$ \EndIf
+  \EndWhile
+  \State evaluate offspring; \textbf{if} no improvement for $S$ generations \textbf{then break}
+\EndFor
+\State \Return best decoded solution
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Complexity analysis}
+Table~\ref{tab:complexity} summarizes the dominant worst-case cost of
+each strategy as implemented, where $n$ is the number of students,
+$k=\lceil n/C\rceil$ the number of buses, $T$ the iteration cap,
+$P$ the population and $G$ the generations. The two flow-based
+clustering pipelines are dominated by the minimum-cost-flow assignment;
+the genetic algorithm by the repeated decoding of the whole
+population; and the set-cover programs by branch-and-cut, which is
+worst-case exponential but fast in practice for these instances.
+
+\begin{table}[t]
 \centering
-\caption{Distancia total de la flota (km), media $\pm$ desv. estándar sobre 3 semillas.}
+\caption{Dominant worst-case time complexity per strategy.}
+\label{tab:complexity}
+\begin{tabular}{lll}
+\toprule
+\textbf{Strategy} & \textbf{Clustering / selection} & \textbf{Dominant cost}\\
+\midrule
+K-medoids + TSP & min-cost flow, $T$ iters & $O(T\,n^3)$\\
+Sectorial       & sweep $O(n\log n)$ + flow & $O(T\,n^3)$\\
+CVRPTW (zonal)  & point-in-polygon $O(n)$ & $O(n^2)$--$O(n^3)$ (GLS)\\
+Set Cover (per-child) & $O(n^2)$ candidates + ILP & ILP, worst-case exp.\\
+Set Cover (grid)      & $O(n)$ seeds + ILP & ILP, worst-case exp.\\
+Genetic & permutation search & $O(P\,G\,n^2)$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% =====================================================================
+\section{Experimental Setup}\label{sec:setup}
+% =====================================================================
+Scenarios are generated on the real drivable road network of
+Medell\'in and the Valle de Aburr\'a, extracted from OpenStreetMap with
+OSMnx~\cite{Boeing2017OSMnx} and restricted to the largest strongly
+connected component. The depot is fixed at a university campus, and
+$N$ student stops are sampled uniformly from graph nodes lying inside
+the union of the six service-zone polygons, so that all instances stay
+within the actual metropolitan footprint. Directed shortest-path
+distance and travel-time matrices are precomputed with Dijkstra's
+algorithm. The bus capacity is $C=20$.
+
+We sweep four student densities $N\in\{50,100,200,400\}$ with three
+seeds each, giving $12$ scenarios and $72$ runs ($6$ strategies
+$\times\,12$). For every run we record: total fleet distance, wall-clock
+latency, number of buses used, coverage (fraction of students served),
+the silhouette coefficient~\cite{Rousseeuw1987Silhouettes} of the
+clustering on the symmetrized distances, capacity violations, and the
+longest single-route distance. To keep latency comparable, the
+per-cluster TSP search is capped at $5$~s and the per-zone CVRPTW
+search at $20$~s. Statistical significance across strategies is
+assessed with the non-parametric Friedman test (blocks $=$ the $12$
+scenarios), and pairwise differences with the Wilcoxon signed-rank
+test.
+
+% =====================================================================
+\section{Results}\label{sec:results}
+% =====================================================================
+Table~\ref{tab:fleet} reports fleet distance, Table~\ref{tab:latency}
+latency, and Table~\ref{tab:quality} the remaining quality metrics at
+the most demanding density ($N=400$). Figure~\ref{fig:scalability}
+shows how latency scales, Figure~\ref{fig:pareto} the
+distance--latency trade-off, and Figure~\ref{fig:grid} the six
+solutions on one shared scenario.
+
+\begin{table}[t]
+\centering
+\caption{Total fleet distance (km), mean $\pm$ std over 3 seeds. Bold:
+column minimum among full-coverage methods.}
 \label{tab:fleet}
-\small
 \begin{tabular}{lcccc}
-\hline
-\textbf{Algoritmo} & $N{=}50$ & $N{=}100$ & $N{=}200$ & $N{=}400$ \\
-\hline
-K-medoids+TSP        & \textbf{108$\pm$8} & \textbf{157$\pm$6} & \textbf{277$\pm$25} & 465$\pm$31 \\
-Clustering sectorial & 109$\pm$7 & 161$\pm$6 & 278$\pm$23 & \textbf{464$\pm$32} \\
-CVRPTW zonas$^\ast$  & 132$\pm$10 & 183$\pm$3 & 295$\pm$9 & 472$\pm$9 \\
-SetCover por niño    & 169$\pm$24 & 241$\pm$24 & 385$\pm$29 & 679$\pm$17 \\
-SetCover rejilla     & 139$\pm$9 & 213$\pm$4 & 344$\pm$20 & 590$\pm$23 \\
-Algoritmo Genético   & 118$\pm$11 & 206$\pm$3 & 466$\pm$20 & 995$\pm$43 \\
-\hline
+\toprule
+\textbf{Strategy} & $N{=}50$ & $N{=}100$ & $N{=}200$ & $N{=}400$\\
+\midrule
+K-medoids + TSP      & \textbf{108$\pm$8}  & \textbf{157$\pm$6}  & \textbf{277$\pm$25} & 465$\pm$31\\
+Sectorial            & 109$\pm$7  & 161$\pm$6  & 278$\pm$23 & \textbf{464$\pm$32}\\
+CVRPTW (zonal)$^\ast$ & 132$\pm$10 & 183$\pm$3  & 295$\pm$9  & 472$\pm$9\\
+Set Cover (per-child) & 169$\pm$24 & 241$\pm$24 & 385$\pm$29 & 679$\pm$17\\
+Set Cover (grid)      & 139$\pm$9  & 213$\pm$4  & 344$\pm$20 & 590$\pm$23\\
+Genetic               & 118$\pm$11 & 206$\pm$3  & 466$\pm$20 & 995$\pm$43\\
+\bottomrule
 \end{tabular}
-\\[2pt]
-\footnotesize $^\ast$ CVRPTW deja hasta $\sim$1\% de los niños sin servir (cobertura $\ge 0.99$) cuando el límite de duración por ruta lo impide; su distancia, por tanto, no es estrictamente comparable. Valores en \textbf{negrita}: mínimo por columna entre los métodos de cobertura completa.
+\\[3pt]
+{\footnotesize $^\ast$ CVRPTW may leave up to ${\sim}1\%$ of students
+unserved (coverage $\ge 0.99$) when the route-duration limit binds, so
+its distance is not strictly comparable to the full-coverage methods.}
 \end{table}
 
-\begin{table}[h]
+\begin{table}[t]
 \centering
-\caption{Latencia (segundos), media sobre 3 semillas.}
+\caption{Latency (seconds), mean over 3 seeds.}
 \label{tab:latency}
-\small
 \begin{tabular}{lcccc}
-\hline
-\textbf{Algoritmo} & $N{=}50$ & $N{=}100$ & $N{=}200$ & $N{=}400$ \\
-\hline
-K-medoids+TSP        & 15.0 & 25.0 & 50.2 & 101.1 \\
-Clustering sectorial & 15.0 & 25.0 & 50.3 & 101.2 \\
-CVRPTW zonas         & 100  & 100  & 100  & 100 \\
-SetCover por niño    & 0.01 & 0.02 & 0.05 & 0.16 \\
-SetCover rejilla     & 0.31 & 0.65 & 2.22 & 67.6 \\
-Algoritmo Genético   & 5.5  & 22.2 & 47.4 & 116.5 \\
-\hline
+\toprule
+\textbf{Strategy} & $N{=}50$ & $N{=}100$ & $N{=}200$ & $N{=}400$\\
+\midrule
+K-medoids + TSP      & 15.0 & 25.0 & 50.2 & 101.1\\
+Sectorial            & 15.0 & 25.0 & 50.3 & 101.2\\
+CVRPTW (zonal)       & 100.0 & 100.0 & 100.0 & 100.0\\
+Set Cover (per-child) & 0.01 & 0.02 & 0.05 & 0.16\\
+Set Cover (grid)      & 0.31 & 0.65 & 2.22 & 67.6\\
+Genetic               & 5.5 & 22.2 & 47.4 & 116.5\\
+\bottomrule
 \end{tabular}
 \end{table}
 
-\begin{figure}[h]
+\begin{table}[t]
 \centering
-\includegraphics[width=\columnwidth]{figures/scalability.png}
-\caption{Latencia media frente al tamaño del problema (escala log).}
+\caption{Additional quality metrics at $N{=}400$ (mean over 3 seeds):
+buses used, coverage, silhouette, and longest single route.}
+\label{tab:quality}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Strategy} & \textbf{Buses} & \textbf{Coverage} & \textbf{Silhouette} & \textbf{Max route (km)}\\
+\midrule
+K-medoids + TSP      & 20.0 & 1.000 & 0.280 & 49.1\\
+Sectorial            & 20.0 & 1.000 & \textbf{0.287} & 47.6\\
+CVRPTW (zonal)       & 22.7 & 0.998 & 0.264 & \textbf{30.0}\\
+Set Cover (per-child) & 27.0 & 1.000 & 0.247 & 54.3\\
+Set Cover (grid)      & 23.3 & 1.000 & 0.222 & 56.3\\
+Genetic               & 20.0 & 1.000 & $-0.193$ & 80.3\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Statistical significance.}
+The Friedman test rejects the null hypothesis of equal performance
+across the six strategies for both fleet distance
+($\chi^2=46.7$, $\mathrm{df}=5$, $p<10^{-8}$) and latency
+($\chi^2=42.3$, $\mathrm{df}=5$, $p<10^{-7}$). On fleet distance the
+mean ranks (1 = best) are $1.67$ for both K-medoids and Sectorial,
+$2.92$ for CVRPTW, $4.50$ for Set Cover (grid), $4.75$ for Genetic and
+$5.50$ for Set Cover (per-child). The two leaders are statistically
+indistinguishable: a Wilcoxon signed-rank test between K-medoids and
+Sectorial over the $12$ scenarios yields $p=0.68$. On latency the
+ranking is reversed at the top---Set Cover (per-child) is fastest in
+every scenario (mean rank $1.00$), followed by Set Cover (grid)
+($2.25$)---confirming the quality/speed tension visible in
+Figure~\ref{fig:pareto}.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.72\textwidth]{figures/scalability.pdf}
+\caption{Mean latency vs.\ problem size $N$ (log scale). Clustering
+pipelines grow with the TSP budget per bus; set-cover selection stays
+near-instant until the grid ILP grows at $N{=}400$.}
 \label{fig:scalability}
 \end{figure}
 
-\begin{figure*}[t]
+\begin{figure}[t]
 \centering
-\includegraphics[width=0.95\textwidth]{figures/comparison_grid_N200.png}
-\caption{Soluciones de los seis algoritmos sobre el mismo escenario ($N{=}200$, semilla 1).
-De izquierda a derecha y de arriba a abajo: K-medoids+TSP, Clustering sectorial, CVRPTW por zonas, Set Cover por niño, Set Cover sobre rejilla, Algoritmo Genético.}
+\includegraphics[width=0.72\textwidth]{figures/pareto_N400.pdf}
+\caption{Distance--latency trade-off at $N{=}400$ (both lower is
+better). K-medoids and Sectorial dominate on distance; the set-cover
+programs dominate on speed; the genetic algorithm is dominated.}
+\label{fig:pareto}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/comparison_grid_N200.png}
+\caption{The six solutions on one shared scenario ($N{=}200$, seed 1).
+Left to right, top to bottom: K-medoids + TSP, Sectorial, CVRPTW
+(zonal), Set Cover (per-child), Set Cover (grid), Genetic. The compact
+wedge structure of the clustering methods contrasts with the
+overlapping routes produced by the genetic encoding.}
 \label{fig:grid}
-\end{figure*}
+\end{figure}
 
-\subsection{Hallazgos principales}
+% =====================================================================
+\section{Discussion}\label{sec:discussion}
+% =====================================================================
+\paragraph{Why clustering wins.}
+K-medoids and Sectorial achieve the shortest fleet distance because
+they produce spatially compact, well-separated clusters: at $N=400$
+they attain the two highest silhouette scores ($0.280$ and $0.287$;
+Table~\ref{tab:quality}), and silhouette tracks fleet distance closely
+across the sweep. Compact clusters minimize the inter-stop distances
+that the per-cluster TSP must traverse, so a good partition does most
+of the optimization work before routing begins---an empirical
+confirmation of the cluster-first, route-second
+rationale~\cite{CakirRevisitingProblem,Comert2018AStudy}. That the
+geometric sectorial score (Eq.~\ref{eq:sectorial-score}) matches the
+distance-driven medoid partition (Wilcoxon $p=0.68$) is notable: a
+cheap angular heuristic recovers essentially the same quality as
+medoid optimization, and even edges ahead at the largest size.
 
-\begin{itemize}
-    \item Bajo cobertura completa, \textbf{K-medoids + OR-Tools TSP} y el \textbf{Clustering sectorial} son las dos mejores estrategias y quedan prácticamente empatadas en distancia: K-medoids domina en las densidades bajas y el sectorial alcanza la menor distancia a $N{=}400$ (464~km frente a 465~km), con un perfil de latencia idéntico ($\approx$101~s) dominado por el TSP por cluster.
-    \item El \textbf{Clustering sectorial} obtiene además la silueta más alta a gran escala (0.287 frente a 0.280 de K-medoids a $N{=}400$): el barrido angular seguido de la asignación por flujo de costo mínimo produce sectores compactos y bien separados, en línea con los esquemas de agrupamiento por forma respecto al depósito~\cite{CakirRevisitingProblem}.
-    \item El \textbf{CVRPTW zonal} entrega distancias competitivas pero deja hasta $\sim$1\% de los niños sin servir (cobertura $\ge 0.99$) y emplea más buses que el óptimo ($\approx$23 frente a 20 a $N{=}400$); su tiempo está fijado por el presupuesto de cómputo de OR-Tools (100~s).
-    \item Entre las variantes de \textbf{Set Cover}, la versión \emph{por niño} es la más rápida (0.16~s a $N{=}400$) pero la de peor calidad de ruta (679~km), mientras que la de \emph{rejilla} escala mal en tiempo (67.6~s a $N{=}400$, con alta varianza) por el costo de resolver la ILP a medida que crece el número de rutas candidatas.
-    \item El \textbf{Algoritmo Genético} con codificación por permutación y decodificador codicioso degrada con el tamaño: a $N{=}400$ produce 995~km, más del doble que K-medoids+TSP, con silueta negativa indicando clusters dispersos. Esto refuerza la conclusión, conocida en la literatura de VRP, de que un GA \emph{plano} sin operadores conscientes de la topología requiere muchas más generaciones o un esquema de codificación distinto.
-\end{itemize}
+\paragraph{Why the genetic algorithm degrades.}
+The genetic algorithm is competitive at $N=50$ ($118$ km) but collapses
+at $N=400$ ($995$ km, more than double the leaders) with a
+\emph{negative} silhouette, indicating dispersed, interleaved clusters.
+The cause is structural: a flat permutation encoding with a positional
+capacity-chunk decoder has no notion of spatial locality, so the search
+space grows as $n!$ while crossover and mutation routinely place
+geographically distant students in the same bus. Within a fixed
+generation budget the population cannot explore enough of this space,
+and the myopic decoder cannot repair the damage. This reproduces a
+well-known lesson from the VRP metaheuristic
+literature~\cite{Baranwal2016DAVRPTW,Hatamlou2018BlackHole}: a
+topology-agnostic metaheuristic needs either far larger budgets or
+locality-aware operators (e.g.\ cluster-based encodings or a stronger
+local search such as Lin--Kernighan~\cite{HelsgaunAnHeuristic}) to be
+competitive.
 
-% ... [Rest of your sections remain the same] ...
+\paragraph{The CVRPTW trade-off.}
+The zonal CVRPTW yields competitive distances but is not free: it
+leaves up to ${\sim}1\%$ of students unserved when the $75$-minute
+duration limit binds, and it uses more buses than the optimum
+($22.7$ vs.\ $20$ at $N=400$). In exchange it produces by far the most
+\emph{balanced} routes---its longest route ($30.0$ km) is
+$35$--$60\%$ shorter than any other method's
+(Table~\ref{tab:quality})---because the span-balancing penalty and the
+explicit time dimension cap individual ride times. Where bounded
+student ride time is a hard requirement, this is the only strategy that
+delivers it directly.
 
-\bibliographystyle{ieeetr}
+\paragraph{Set covering: speed at a price.}
+The set-cover programs are the speed champions: the per-child variant
+solves every instance in under $0.2$~s. The price is route quality
+(rank $5.50$ on distance) and fleet size ($27$ buses at $N=400$),
+because greedily seeded candidate routes are far from distance-optimal.
+The grid variant trades some of this speed for better distance, but its
+latency becomes erratic at $N=400$ ($67.6\pm48.5$~s) as the candidate
+pool---and hence the integer program---grows. These methods are the
+right choice when a feasible plan is needed in near-real-time, e.g.\ for
+interactive what-if analysis.
+
+\paragraph{Limitations.}
+Our study uses three seeds per density; while sufficient for the
+Friedman/Wilcoxon conclusions reported here, more seeds would tighten
+the confidence intervals, and a post-hoc test (e.g.\ Nemenyi) would
+formalize the pairwise gaps beyond the leading pair. The benchmark
+models a single school with static, fully-known demand and a
+homogeneous fleet; multi-school, dynamic or stochastic settings remain
+future work. Finally, all strategies use the same OR-Tools routing
+budget, so absolute latencies reflect that budget rather than an
+intrinsic lower bound.
+
+% =====================================================================
+\section{Conclusions}\label{sec:conclusions}
+% =====================================================================
+We presented a unified, road-network-grounded benchmark of six SBRP
+solution strategies evaluated on identical scenarios under a common
+solver interface, with a formal model, pseudocode, complexity analysis
+and non-parametric statistical testing. The central finding is clear
+and statistically supported: under full coverage, capacitated
+k-medoids and a multi-objective sectorial clustering are tied for the
+shortest fleet distance and dominate the alternatives, because both
+build compact clusters that make the downstream TSP easy. Set-covering
+integer programs occupy the opposite corner of the trade-off---near
+instant but with longer routes and larger fleets---while a zonal
+CVRPTW is the method of choice when bounded ride time is mandatory, and
+a flat genetic algorithm is not competitive at scale without
+locality-aware operators.
+
+Future work will (i)~broaden the statistical design with more seeds and
+post-hoc tests; (ii)~hybridize the genetic algorithm with a
+cluster-based encoding and Lin--Kernighan local search; and
+(iii)~extend the harness to multi-school and dynamic-demand variants so
+that the same fair-comparison methodology can guide a wider class of
+real deployments.
+
+\bibliographystyle{splncs04}
 \bibliography{refs}
 
 \end{document}

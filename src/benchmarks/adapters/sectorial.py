@@ -42,6 +42,10 @@ class ClusteringConfig:
             raise ValueError("alpha must be in [0, 1]")
         if self.capacity <= 0:
             raise ValueError("capacity must be positive")
+        if self.max_iter < 0:
+            raise ValueError("max_iter must be non-negative")
+        if self.sector_penalty < 0:
+            raise ValueError("sector_penalty must be non-negative")
 
 
 class GeographicClusterer:
@@ -258,6 +262,12 @@ class SectorialSolver(Solver):
         routes: list[list[int]] = []
         for c in np.unique(labels_full[labels_full >= 0]):
             member_idx = np.where(labels_full == c)[0]       # scenario indices (children)
+            if len(member_idx) == 1:
+                # Singleton: solve_tsp's n<=2 shortcut would yield [child, depot];
+                # build the depot-anchored round trip explicitly to honour the
+                # Solution.routes contract ([depot, c1, ..., depot]).
+                routes.append([origin, int(member_idx[0]), origin])
+                continue
             sub_indices = np.append(member_idx, origin)
             depot_pos = len(sub_indices) - 1
             sub = full_D[np.ix_(sub_indices, sub_indices)]

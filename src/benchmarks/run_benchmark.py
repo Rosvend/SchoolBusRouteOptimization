@@ -23,6 +23,7 @@ import pandas as pd
 from .adapters.cvrptw_zones import CVRPTWZonesSolver
 from .adapters.genetic import GeneticSolver
 from .adapters.kmedoids_ortools import KmedoidsORToolsSolver
+from .adapters.sectorial import SectorialSolver
 from .adapters.setcover_grid import SetCoverGridSolver
 from .adapters.setcover_perchild import SetCoverPerChildSolver
 from .core.metrics import compute_all
@@ -34,6 +35,7 @@ from .viz.plotter import plot_comparison_grid, plot_single
 
 SOLVER_REGISTRY: dict[str, type[Solver]] = {
     "kmedoids_ortools":  KmedoidsORToolsSolver,
+    "sectorial":         SectorialSolver,
     "cvrptw_zones":      CVRPTWZonesSolver,
     "setcover_perchild": SetCoverPerChildSolver,
     "setcover_grid":     SetCoverGridSolver,

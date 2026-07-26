@@ -254,3 +254,9 @@ cache/medellin_valle_drive.graphml
 
 # Claude Code internal state
 .claude/
+
+# Paper figures are manuscript *inputs*, not build artifacts: the blanket
+# *.pdf / *.png rules above would otherwise make docs/latex/ unbuildable from
+# a clean clone, since optimization.tex \includegraphics these files.
+!docs/latex/figures/*.pdf
+!docs/latex/figures/*.png

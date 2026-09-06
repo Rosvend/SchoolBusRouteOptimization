@@ -49,7 +49,7 @@ STRATEGIES = [
     ("cvrptw_zones",      "CVRPTW-zones",   "C2", "s", True,  "-"),
     ("setcover_perchild", "SetCover-child", "C3", "^", True,  "-"),
     ("setcover_grid",     "SetCover-grid",  "C4", "v", True,  "-"),
-    ("genetic",           "Genetic",        "C5", "D", True,  "-"),
+    ("alns",              "ALNS",           "C5", "D", True,  "-"),
 ]
 
 
@@ -132,7 +132,7 @@ def plot_pareto(data, out: Path, N: int = 400) -> None:
     ax.grid(True, which="both", alpha=0.25, linewidth=0.5)
 
     # Pad the data limits so no marker is clipped by, or sits under, the axes
-    # spines -- the Genetic point is the extreme in both axes.
+    # spines: the spread across strategies is wide in both axes.
     xs = [p[0] for p in pts.values()]
     ys = [p[1] for p in pts.values()]
     xpad = 0.08 * (max(xs) - min(xs))
@@ -162,8 +162,7 @@ def plot_pareto(data, out: Path, N: int = 400) -> None:
     ax.annotate("lower-left is better", xy=(0.02, 0.04),
                 xycoords="axes fraction", fontsize=11, style="italic",
                 color="0.35")
-    # Legend below the axes: an in-axes legend hides the Genetic point, which
-    # is the extreme in both dimensions.
+    # Legend below the axes: an in-axes legend overlaps the extreme markers.
     ax.legend(ncol=3, framealpha=0.95, columnspacing=1.0,
               handletextpad=0.4, loc="upper center", bbox_to_anchor=(0.5, -0.20))
     fig.tight_layout()

@@ -23,7 +23,7 @@ STRATEGY_ORDER = [
     ("sectorial", "Sectorial"),
     ("cvrptw_zones", "CVRPTW (zonal)"),
     ("setcover_grid", "Set Cover (grid)"),
-    ("genetic", "Genetic"),
+    ("alns", "ALNS"),
     ("setcover_perchild", "Set Cover (per-child)"),
 ]
 

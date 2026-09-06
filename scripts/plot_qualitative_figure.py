@@ -8,7 +8,7 @@ representative of each solution paradigm:
 
     Sectorial          - clustering        (compact wedges radiating from the depot)
     Set Cover (grid)   - covering ILP      (overlapping, capacity-filled routes)
-    Genetic            - flat metaheuristic (interleaved, non-local routes)
+    ALNS               - destroy-repair search (locality-aware metaheuristic)
 
 Usage:
     python -m scripts.plot_qualitative_figure [--n 200] [--seed 1]
@@ -24,16 +24,16 @@ matplotlib.use("Agg")
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.benchmarks.adapters.genetic import GeneticSolver
 from src.benchmarks.adapters.sectorial import SectorialSolver
 from src.benchmarks.adapters.setcover_grid import SetCoverGridSolver
+from src.benchmarks.adapters.alns import AlnsSolver
 from src.benchmarks.data.scenario_generator import make_scenario
 from src.benchmarks.viz.plotter import plot_comparison_grid
 
 PANELS = [
     ("Sectorial (clustering)", SectorialSolver),
     ("Set Cover, grid (covering ILP)", SetCoverGridSolver),
-    ("Genetic (flat permutation)", GeneticSolver),
+    ("ALNS (destroy-repair search)", AlnsSolver),
 ]
 
 

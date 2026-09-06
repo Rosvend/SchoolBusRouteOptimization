@@ -85,7 +85,13 @@ def plot_solution(scenario: Scenario,
 
     if add_basemap:
         try:
-            ctx.add_basemap(ax, source=ctx.providers.OpenStreetMap.Mapnik,
+            # Esri's grey canvas rather than OSM Mapnik or CartoDB: osm.org
+            # blocks bulk tile fetches and CartoDB now needs an API key, and
+            # both serve a watermarked tile instead of an HTTP error, so the
+            # failure renders silently into the figure rather than raising
+            # here. This one is keyless, and its muted palette keeps the route
+            # colours legible in print.
+            ctx.add_basemap(ax, source=ctx.providers.Esri.WorldGrayCanvas,
                             zoom=13, crs="EPSG:4326", attribution_size=4)
         except Exception:
             pass

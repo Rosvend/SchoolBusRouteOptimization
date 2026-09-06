@@ -1,3 +1,0 @@
-1 (Fig. 1) - Log-log line plot of mean solver latency in seconds against the number of students, one line per strategy.
-2 (Fig. 2) - Scatter plot of fleet distance against latency at N=400, one marker per strategy, with the two leading strategies nearly overlapping in the lower-left corner.
-3 (Fig. 3) - Side-by-side maps of the same scenario: wedge-shaped sectorial clusters, overlapping grid set-covering routes, and the ALNS solution, drawn over the real road network.

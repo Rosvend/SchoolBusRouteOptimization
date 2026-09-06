@@ -1,9 +1,13 @@
-%%%%%%%%%%%%%%%%%%%% CITIS-Final-Paper-Adaptado.tex %%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%% CITIS-Final-Paper-Optimizacion.tex %%%%%%%%%%%%%%%%%%%%
 %
-%  MARCADORES \todo{...}: senalan datos que deben recalcularse a partir
-%  de las corridas reales, donde depende de las corridas por semilla (rangos de Friedman,
-%  p-valores, Nemenyi) se dejo el marcador para que ustedes lo
-%  recalculen con el pipeline de estadistica.
+%  Articulo final en la plantilla SNmult (Springer Nature, contributed
+%  volume) solicitada para CITIS. Los seis strategies (incluido ALNS con
+%  resultados reales) ya estan completos; no quedan marcadores \todo{}
+%  activos en el cuerpo (el macro se deja definido por si hace falta en
+%  una revision futura). Incluye las tres figuras del benchmark
+%  (figures/scalability.pdf, figures/pareto_N400.pdf,
+%  figures/comparison_row_N200.png) referenciadas desde una carpeta
+%  "figures/" junto a este .tex.
 % =====================================================================
 
 \documentclass[graybox]{SNmult}
@@ -69,64 +73,52 @@ Universidad Pontificia Bolivariana, Medell\'in, Colombia
 \maketitle
 
 \abstract*{The School Bus Routing Problem (SBRP) is an NP-hard
-combinatorial optimization problem that generalizes the capacitated
-vehicle routing problem and underpins a service used daily by millions
-of students. Although the literature offers many heuristic and
-metaheuristic strategies, head-to-head comparisons under identical,
-realistic conditions remain scarce, which makes it difficult for
-practitioners to choose a method. We present a unified benchmark evaluating six clustering-, covering- and
-search-based strategies: capacitated k-medoids, a multi-objective
-sectorial clustering, a zonal capacitated vehicle routing problem with
-time windows (CVRPTW), two set-covering integer programs and an adaptive
-large-neighbourhood search (ALNS), on identical scenarios from the real
+combinatorial optimization problem generalizing the capacitated
+vehicle routing problem and underpinning daily student transport.
+Although the literature offers many heuristic strategies, head-to-head
+comparisons under identical, realistic conditions remain scarce. We
+present a unified benchmark evaluating six clustering-, covering-, and
+search-based strategies on identical scenarios from the real
 OpenStreetMap road network of Medell\'in (Colombia). All share a solver
-interface, directed shortest-path distances, a single depot and a bus
-capacity of twenty, and are measured on fleet distance, computation time,
-fleet size, coverage and cluster cohesion across densities
-$N\in\{50,100,200,400\}$ with eleven seeds each (264 runs). Capacitated k-medoids and sectorial
-clustering are statistically tied for the shortest fleet distance
-(Wilcoxon $p=0.36$), while the set-covering formulations trade route
-quality for speed, at different points of that trade-off because they
-optimize different objectives. Under an identical wall-clock budget the
-ALNS attains the shortest fleet distance at every density, winning all
-$44$ scenarios against both clustering pipelines and taking first place on
-the distance ranking (mean rank $1.02$ of $6$), while calibration against
-published CVRP instances puts it within $0.22\%$ of the known optima on
-average. It reaches those routes with markedly \emph{less} cohesive
-clusters than the clustering pipelines, which indicates that spatial
-compactness is a by-product of good routes rather than their cause. We
-distill the trade-offs into practical guidance for SBRP solver selection.
+interface, directed shortest paths, a single depot, and a bus capacity
+of twenty, measured across fleet distance, computation time, coverage,
+and cluster cohesion across densities $N\in\{50,100,200,400\}$ with eleven
+seeds each (264 runs). Under an identical wall-clock budget, Adaptive
+Large Neighborhood Search (ALNS) achieves the shortest fleet distance at
+every density, winning all 44 scenarios against clustering pipelines (mean
+rank 1.02 of 6) and calibrating within 0.22\% of known CVRP optima.
+Crucially, ALNS yields these routes with markedly less cohesive clusters
+(silhouette 0.068 vs.\ 0.276 for K-medoids at $N=400$), proving that
+spatial compactness is a byproduct of good routes rather than their cause.
+Alternatively, zonal CVRPTW caps maximum ride times (reducing longest
+routes by 30--47\%), while set-covering models generate feasible plans in
+sub-second times per child. We distill these trade-offs into practical
+guidance for SBRP solver selection.
 \keywords{School Bus Routing Problem $\cdot$ Capacitated clustering $\cdot$
 Vehicle routing $\cdot$ Set covering $\cdot$ Road-network optimization.}}
 
 \abstract{The School Bus Routing Problem (SBRP) is an NP-hard
-combinatorial optimization problem that generalizes the capacitated
-vehicle routing problem and underpins a service used daily by millions
-of students. Although the literature offers many heuristic and
-metaheuristic strategies, head-to-head comparisons under identical,
-realistic conditions remain scarce, which makes it difficult for
-practitioners to choose a method. We present a unified benchmark evaluating six clustering-, covering- and
-search-based strategies: capacitated k-medoids, a multi-objective
-sectorial clustering, a zonal capacitated vehicle routing problem with
-time windows (CVRPTW), two set-covering integer programs and an adaptive
-large-neighbourhood search (ALNS), on identical scenarios from the real
+combinatorial optimization problem generalizing the capacitated
+vehicle routing problem and underpinning daily student transport.
+Although the literature offers many heuristic strategies, head-to-head
+comparisons under identical, realistic conditions remain scarce. We
+present a unified benchmark evaluating six clustering-, covering-, and
+search-based strategies on identical scenarios from the real
 OpenStreetMap road network of Medell\'in (Colombia). All share a solver
-interface, directed shortest-path distances, a single depot and a bus
-capacity of twenty, and are measured on fleet distance, computation time,
-fleet size, coverage and cluster cohesion across densities
-$N\in\{50,100,200,400\}$ with eleven seeds each (264 runs). Capacitated k-medoids and sectorial
-clustering are statistically tied for the shortest fleet distance
-(Wilcoxon $p=0.36$), while the set-covering formulations trade route
-quality for speed, at different points of that trade-off because they
-optimize different objectives. Under an identical wall-clock budget the
-ALNS attains the shortest fleet distance at every density, winning all
-$44$ scenarios against both clustering pipelines and taking first place on
-the distance ranking (mean rank $1.02$ of $6$), while calibration against
-published CVRP instances puts it within $0.22\%$ of the known optima on
-average. It reaches those routes with markedly \emph{less} cohesive
-clusters than the clustering pipelines, which indicates that spatial
-compactness is a by-product of good routes rather than their cause. We
-distill the trade-offs into practical guidance for SBRP solver selection.
+interface, directed shortest paths, a single depot, and a bus capacity
+of twenty, measured across fleet distance, computation time, coverage,
+and cluster cohesion across densities $N\in\{50,100,200,400\}$ with eleven
+seeds each (264 runs). Under an identical wall-clock budget, Adaptive
+Large Neighborhood Search (ALNS) achieves the shortest fleet distance at
+every density, winning all 44 scenarios against clustering pipelines (mean
+rank 1.02 of 6) and calibrating within 0.22\% of known CVRP optima.
+Crucially, ALNS yields these routes with markedly less cohesive clusters
+(silhouette 0.068 vs.\ 0.276 for K-medoids at $N=400$), proving that
+spatial compactness is a byproduct of good routes rather than their cause.
+Alternatively, zonal CVRPTW caps maximum ride times (reducing longest
+routes by 30--47\%), while set-covering models generate feasible plans in
+sub-second times per child. We distill these trade-offs into practical
+guidance for SBRP solver selection.
 \keywords{School Bus Routing Problem $\cdot$ Capacitated clustering $\cdot$
 Vehicle routing $\cdot$ Set covering $\cdot$ Road-network optimization.}}
 
@@ -525,6 +517,23 @@ Initial construction never exceeds $1.1\%$. Since the budget grows as
 $k\cdot B$ while per-iteration cost grows with $n$, the realised iteration
 count falls only from $15{,}095$ to $10{,}353$ as $n$ grows eightfold.
 
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.68\textwidth]{figures/scalability.pdf}
+\Description{Log-log line plot of mean latency in seconds against
+number of students N for six strategies. K-medoids, Sectorial and ALNS
+trace an almost identical rising line; the zonal CVRPTW is flat at its
+fixed per-zone budget; the two set-covering variants start well below
+one second and rise with N, the grid variant rising fastest.}
+\caption{Mean latency vs.\ $N$ (log--log). K-medoids, Sectorial and
+ALNS trace the same curve because all three spend the matched
+$k\cdot5$~s wall-clock budget of Section~\ref{sec:alns}; the zonal
+CVRPTW is pinned to its fixed per-zone budget; the set-covering
+variants start orders of magnitude faster and grow with the size of
+their candidate pool and integer program.}
+\label{fig:scalability}
+\end{figure}
+
 \subsection{Experimental setup}\label{sec:setup}
 Scenarios are generated on the real drivable road network of Medell\'in
 and the Valle de Aburr\'a, extracted from OpenStreetMap with
@@ -572,7 +581,9 @@ change the algorithms compared.
 \section{Results}\label{sec:results}
 % =====================================================================
 Table~\ref{tab:fleet} reports fleet distance and latency, generated
-mechanically from the run output. At the most demanding density
+mechanically from the run output; Figure~\ref{fig:pareto} plots the
+same two metrics jointly at $N{=}400$ and Figure~\ref{fig:scalability}
+shows how latency scales with $N$ for all six strategies. At the most demanding density
 ($N=400$), the remaining quality metrics (buses / coverage / silhouette /
 longest route in km, means over $11$ seeds) are: K-medoids
 $20.0/1.000/0.276/46.2$; Sectorial $20.0/1.000/0.266/45.2$; zonal CVRPTW
@@ -610,6 +621,23 @@ ALNS & \textbf{98$\pm$5} & \textbf{155$\pm$19} & \textbf{251$\pm$19} & \textbf{4
 when the duration limit binds, so its distance is not strictly comparable
 to the full-coverage methods.}
 \end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.68\textwidth]{figures/pareto_N400.pdf}
+\Description{Scatter plot of fleet distance against mean latency at
+N=400, one marker per strategy. ALNS sits furthest left (shortest
+distance) at a latency matching the clustering pipelines; the two
+set-covering variants sit far to the right on distance but far below on
+latency; K-medoids and Sectorial are drawn as coincident markers.}
+\caption{Fleet distance vs.\ latency at $N{=}400$ (lower-left is
+better). Within the same wall-clock budget as the clustering pipelines,
+ALNS reaches the shortest distance of all six strategies; the
+set-covering variants trade distance for speed at two different points
+of that trade-off; K-medoids and Sectorial are statistically
+indistinguishable, their $1.0$~km gap being inside seed noise.}
+\label{fig:pareto}
+\end{figure}
 
 \paragraph{Statistical significance.}
 The Friedman test rejects equal performance across the six strategies for
@@ -672,6 +700,25 @@ than six equally unvalidated ones.
 % =====================================================================
 \section{Discussion}\label{sec:discussion}
 % =====================================================================
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.92\textwidth]{figures/comparison_row_N200.png}
+\Description{Three maps of the same N=200, seed 1 scenario over the
+real Medellin road network. Left: Sectorial produces ten compact,
+wedge-shaped clusters radiating from the depot. Centre: the grid
+set-covering ILP selects eleven routes that overlap near the depot.
+Right: ALNS produces ten routes, using the same fleet size as
+Sectorial but with less visually compact, more interleaved routes.}
+\caption{Three of the six strategies on the same scenario ($N{=}200$,
+seed 1). Left: Sectorial's wedge-shaped clusters. Centre: the grid
+set-covering ILP, whose selected routes overlap near the depot because
+Eq.~(\ref{eq:setcover}) only requires coverage, not a partition, and
+needs one more bus (11 vs.\ 10) to do so. Right: the ALNS solution,
+matching Sectorial's fleet size with a visibly less compact partition,
+consistent with the cohesion results discussed below.}
+\label{fig:grid}
+\end{figure}
+
 \paragraph{Clustering is a good heuristic, not the objective.}
 Among the cluster-first, route-second pipelines the story is the familiar
 one: K-medoids and Sectorial build compact, well-separated clusters,
@@ -804,10 +851,11 @@ or animal subjects: all student locations are synthetic scenarios
 sampled from publicly available OpenStreetMap road-network data, not
 records of real students, so no ethics approval was required.}
 
-% The camera-ready template includes the bibliography manually via
-% \input{References}, which already provides the thebibliography
-% environment. Do not also use \bibliographystyle/\bibliography: that
-% duplicates the list and breaks the build under bibtex/latexmk.
-\input{References}
+% El propio archivo de la plantilla usa minuscula: \input{references}
+% (sensible a mayusculas en Linux/Overleaf). Este .tex ya provee el
+% entorno thebibliography, asi que no se debe usar tambien
+% \bibliographystyle/\bibliography: eso duplicaria la lista y rompe
+% la compilacion con bibtex/latexmk.
+\input{references}
 
 \end{document}

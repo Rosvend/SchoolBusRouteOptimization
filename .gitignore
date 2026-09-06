@@ -265,3 +265,7 @@ cache/medellin_valle_drive.graphml
 !docs/latex/figures/*.png
 !docs/latexLNNS/figures/*.pdf
 !docs/latexLNNS/figures/*.png
+
+# SNmult.cls regenerates this alt-text dump on every compile; the
+# submission artefact is ALT_Text_*.xlsx, not this file.
+docs/latexLNNS/DescriptionTexts.txt

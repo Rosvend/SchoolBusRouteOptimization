@@ -39,13 +39,24 @@ def coverage(scenario: Scenario, solution: Solution) -> float:
     return len(served_set(scenario, solution)) / scenario.n_children
 
 
+def _route_load(scenario: Scenario, route: list[int]) -> float:
+    """Passengers on a route. Depot appears at start AND end, hence the -2.
+
+    With per-node demands (external CVRP instances) the load is the summed
+    demand instead of the stop count.
+    """
+    if len(route) <= 2:
+        return 0.0
+    if scenario.demands is None:
+        return float(len(route) - 2)
+    return float(sum(scenario.demands[i] for i in route[1:-1]))
+
+
 def capacity_violations(scenario: Scenario, solution: Solution) -> int:
     cap = scenario.bus_capacity
     n = 0
     for r in solution.routes:
-        # depot at start AND end → subtract 2 unless route is empty
-        load = max(0, len(r) - 2)
-        if load > cap:
+        if _route_load(scenario, r) > cap + 1e-9:
             n += 1
     return n
 
@@ -83,8 +94,8 @@ def max_route_distance(scenario: Scenario, solution: Solution) -> float:
     return best
 
 
-def mean_route_load(solution: Solution) -> float:
-    loads = [max(0, len(r) - 2) for r in solution.routes if len(r) > 2]
+def mean_route_load(scenario: Scenario, solution: Solution) -> float:
+    loads = [_route_load(scenario, r) for r in solution.routes if len(r) > 2]
     return float(np.mean(loads)) if loads else 0.0
 
 
@@ -96,5 +107,5 @@ def compute_all(scenario: Scenario, solution: Solution) -> dict:
         "capacity_violations": capacity_violations(scenario, solution),
         "silhouette": silhouette(scenario, solution),
         "max_route_distance_m": max_route_distance(scenario, solution),
-        "mean_route_load": mean_route_load(solution),
+        "mean_route_load": mean_route_load(scenario, solution),
     }

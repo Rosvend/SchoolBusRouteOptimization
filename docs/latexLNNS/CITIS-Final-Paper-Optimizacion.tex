@@ -8,15 +8,16 @@
 
 \documentclass[graybox]{SNmult}
 
-\usepackage{type1cm}        % activar si Times/Helvetica/Courier
-                            % no estan disponibles en su sistema
-\usepackage{makeidx}        % generacion de indice (como en la plantilla)
+\usepackage{type1cm}
+\usepackage{makeidx}
 \usepackage{graphicx}
-\usepackage{multicol}       % usado para el indice a dos columnas
+\usepackage{multicol}
 \usepackage[bottom]{footmisc}
 \usepackage{newtxtext}
 \usepackage[varvw]{newtxmath}
-\usepackage{amsmath,amssymb}
+\usepackage{amsmath}
+\let\Bbbk\undefined % Resolves amssymb \Bbbk collision
+\usepackage{amssymb}
 \usepackage{booktabs}
 \usepackage{algorithm}
 \usepackage{algpseudocode}
@@ -88,12 +89,17 @@ eleven seeds each (264 runs). Capacitated k-medoids and sectorial
 clustering are statistically tied for the shortest fleet distance
 (Wilcoxon $p=0.36$), while the set-covering formulations trade route
 quality for speed, at different points of that trade-off because they
-optimize different objectives. \todo{Resumir aqui, en una frase, donde
-queda ALNS frente a las demas cinco estrategias una vez calculados los
-resultados reales (distancia, latencia y rango).} We distill the
-trade-offs into practical guidance for SBRP solver selection.
-\keywords{School Bus Routing Problem \and Capacitated clustering \and
-Vehicle routing \and Set covering \and Road-network optimization.}}
+optimize different objectives. Under an identical wall-clock budget the
+ALNS attains the shortest fleet distance at every density, winning all
+$44$ scenarios against both clustering pipelines and taking first place on
+the distance ranking (mean rank $1.02$ of $6$), while calibration against
+published CVRP instances puts it within $0.22\%$ of the known optima on
+average. It reaches those routes with markedly \emph{less} cohesive
+clusters than the clustering pipelines, which indicates that spatial
+compactness is a by-product of good routes rather than their cause. We
+distill the trade-offs into practical guidance for SBRP solver selection.
+\keywords{School Bus Routing Problem $\cdot$ Capacitated clustering $\cdot$
+Vehicle routing $\cdot$ Set covering $\cdot$ Road-network optimization.}}
 
 \abstract{The School Bus Routing Problem (SBRP) is an NP-hard
 combinatorial optimization problem that generalizes the capacitated
@@ -116,12 +122,17 @@ eleven seeds each (264 runs). Capacitated k-medoids and sectorial
 clustering are statistically tied for the shortest fleet distance
 (Wilcoxon $p=0.36$), while the set-covering formulations trade route
 quality for speed, at different points of that trade-off because they
-optimize different objectives. \todo{Resumir aqui, en una frase, donde
-queda ALNS frente a las demas cinco estrategias una vez calculados los
-resultados reales (distancia, latencia y rango).} We distill the
-trade-offs into practical guidance for SBRP solver selection.
-\keywords{School Bus Routing Problem \and Capacitated clustering \and
-Vehicle routing \and Set covering \and Road-network optimization.}}
+optimize different objectives. Under an identical wall-clock budget the
+ALNS attains the shortest fleet distance at every density, winning all
+$44$ scenarios against both clustering pipelines and taking first place on
+the distance ranking (mean rank $1.02$ of $6$), while calibration against
+published CVRP instances puts it within $0.22\%$ of the known optima on
+average. It reaches those routes with markedly \emph{less} cohesive
+clusters than the clustering pipelines, which indicates that spatial
+compactness is a by-product of good routes rather than their cause. We
+distill the trade-offs into practical guidance for SBRP solver selection.
+\keywords{School Bus Routing Problem $\cdot$ Capacitated clustering $\cdot$
+Vehicle routing $\cdot$ Set covering $\cdot$ Road-network optimization.}}
 
 % =====================================================================
 \section{Introduction}
@@ -173,7 +184,7 @@ compared directly. This paper addresses that gap. Our contributions
 are:
 
 \begin{itemize}
-\item A \textbf{unified benchmark harness} exposing five SBRP
+\item A \textbf{unified benchmark harness} exposing six SBRP
 strategies through one interface and evaluating them on \emph{identical}
 scenarios built from the real road network of Medell\'in and the Valle
 de Aburr\'a, under the same capacity, distance model and metrics.
@@ -204,12 +215,11 @@ a metropolitan area, and re-targets to another city by swapping the
 graph and service polygons. Total fleet distance is exactly the
 vehicle-kilometres travelled (VKT) that drives fuel use, emissions and
 congestion, so the spread between solvers is not merely algorithmic. At
-$N=400$, among the five clustering- and covering-based strategies with
-known measurements, the worst (Set Cover, per-child, $670$~km) commits
-about $1.46\times$ the VKT of the best (K-medoids, $460$~km) for the
-same students, buses and network. \todo{Verificar si ALNS desplaza el
-mejor o el peor de esta comparacion una vez se tengan sus resultados
-reales, y actualizar la razon en consecuencia.} We stop at VKT
+$N=400$ the worst strategy (Set Cover, per-child, $670$~km) commits about
+$1.56\times$ the VKT of the best (ALNS, $428$~km) for the same students,
+buses and network; the $32$~km that ALNS saves over the best clustering
+pipeline alone is $7\%$ of the daily fleet distance, recovered purely by
+changing solver. We stop at VKT
 deliberately: converting it to emissions needs fleet-specific factors
 we lack for the study area, so that step, and validation against
 municipal operations, are future work rather than an estimate we
@@ -591,12 +601,13 @@ discarded for scaling poorly, lacks.
 \label{alg:alns}
 \footnotesize
 \begin{algorithmic}[1]
-\Require initial solution $r_0$ (k-medoids baseline), destroy operators
-$\Omega^-$, repair operators $\Omega^+$, iteration budget $I$
+\Require initial solution $r_0$ (k-medoids partition, NN$+$2-opt tours),
+destroy operators $\Omega^-$, repair operators $\Omega^+$, time budget
+$B_{\mathrm{A}}=k\cdot B$, cooling schedule $T_t=T_0\gamma^{\,t}$
 \State $r \gets r_0$; \quad $r^{\ast}\gets r_0$
 \State initialize operator weights $w_\omega \gets 1$ for all
 $\omega\in\Omega^-\cup\Omega^+$
-\For{$t = 1,\dots,I$}
+\For{$t = 1,2,\dots$ \textbf{while} elapsed $< B_{\mathrm{A}}$}
   \State select $\omega^-\in\Omega^-$, $\omega^+\in\Omega^+$
          with probability $\propto w_{\omega^-},w_{\omega^+}$
   \State $r' \gets \omega^+(\omega^-(r))$
@@ -604,8 +615,9 @@ $\omega\in\Omega^-\cup\Omega^+$
   \If{$L_{\mathrm{total}}(r') < L_{\mathrm{total}}(r^{\ast})$}
      \State $r^{\ast}\gets r'$
   \EndIf
-  \If{\textsc{Accept}$(r',r,\;\todo{\text{criterio y temperatura reales}})$}
-     \State $r \gets r'$
+  \If{$L_{\mathrm{total}}(r')\le L_{\mathrm{total}}(r)$ \textbf{or}
+      $\mathrm{rand}()<\exp\!\big(-[L_{\mathrm{total}}(r')-L_{\mathrm{total}}(r)]/T_t\big)$}
+     \State $r \gets r'$ \Comment{simulated-annealing acceptance}
   \EndIf
   \State update $w_{\omega^-},w_{\omega^+}$ from the score of this
          iteration \Comment{adaptive weights}
@@ -614,14 +626,38 @@ $\omega\in\Omega^-\cup\Omega^+$
 \end{algorithmic}
 \end{algorithm}
 
-\todo{Completar aqui los valores reales usados en la implementacion:
-numero de iteraciones $I$, presupuesto de tiempo por instancia,
-proporcion de estudiantes destruida por iteracion, pesos iniciales y
-tasa de adaptacion, criterio de aceptacion (p. ej. temperatura inicial
-y esquema de enfriamiento si es tipo simulated annealing), y criterio
-de paro. Estos parametros deben quedar fijos en todo el barrido, igual
-que para las otras cinco estrategias (Sec.~\ref{sec:setup}), para que
-la comparacion siga siendo "sin ajuste por instancia".}
+\paragraph{Parameters and budget.}
+The search is \emph{budget-matched} to the clustering pipelines: an
+instance gets $B_{\mathrm{A}}=k\cdot B$ seconds of wall clock with
+$B=5$~s, exactly the per-cluster TSP budget K-medoids and Sectorial spend
+inside OR-Tools, so $15$, $25$, $50$ and $100$~s at
+$N=50,100,200,400$. Any difference in solution quality is therefore
+attributable to the search rather than to compute. Because the budget is
+wall clock, the initial solution must be cheap: it reuses the baseline's
+capacitated k-medoids partition
+(Eqs.~(\ref{eq:assign-obj})--(\ref{eq:assign-cap})) but routes each
+cluster with a nearest-neighbour tour plus 2-opt instead of calling
+OR-Tools, costing $0.01$--$1.11$~s from $N=50$ to $N=400$ ($\le1.1\%$ of
+the budget). Within it the search completes $15{,}095$, $13{,}374$,
+$11{,}485$ and $10{,}353$ iterations respectively.
+
+Each iteration removes $q\sim\mathcal{U}[0.10n,\,0.25n]$ students,
+capped at $60$. The worst- and Shaw-removal operators pick from their
+ranked candidate lists with the randomisation
+$L[\lfloor |L|\cdot y^{p}\rfloor]$, $y\sim\mathcal{U}(0,1)$ and
+$p=3$, so the choice is greedy but not deterministic; repair uses regret-2.
+Operator weights start at $w_\omega=1$ and are updated as the convex
+combination $w_\omega \gets \theta w_\omega + (1-\theta)s_j$ with
+reaction factor $\theta=0.8$ and scores
+$(s_1,\dots,s_4)=(5,2,1,0.5)$ for a new global best, an improvement on the
+current solution, an accepted solution and a rejected one. Acceptance is
+simulated annealing with geometric cooling $T_t=T_0\gamma^{\,t}$, where
+$T_0$ is fitted so that a solution $5\%$ worse than $r_0$ is accepted with
+probability $0.5$ at the start, and $\gamma$ anneals to $T=1$ over a
+$25{,}000$-iteration horizon. The search stops when the budget is
+exhausted and returns the best solution found. All of these values are
+fixed across the entire sweep, with no per-instance tuning, exactly as for
+the other five strategies (Sec.~\ref{sec:setup}).
 
 \subsection{Complexity analysis}\label{sec:complexity}
 Table~\ref{tab:complexity} summarizes each strategy's asymptotic
@@ -643,14 +679,27 @@ as Table~\ref{tab:latency} shows. The $O(T\,n^3)$ flow bound is real but
 latent: its share rises two orders of magnitude from $N=50$ to
 $N=400$, so it dominates only far beyond the sizes studied.
 
+ALNS is budget-bound in the same way but for a different reason: the time
+limit is imposed directly rather than inherited from a sub-solver, so the
+question its timers answer is not \emph{which stage dominates} but
+\emph{how many iterations the budget buys}. Repair is the bottleneck at
+every density, taking $67.0$, $71.2$, $71.4$ and $65.4\%$ of the run at
+$N=50,100,200,400$ against $17.0$--$28.9\%$ for destroy; construction of
+the initial solution never exceeds $1.1\%$, and the remaining
+$4.6$--$15.9\%$ covers acceptance, operator-weight updates and objective
+evaluation. Repair dominates because each insertion is scored over every
+route and every position, an $O(k\,|r|)$ sweep per removed student, whereas
+the removal operators need one pass over the current routes. Since the
+budget grows as $k\cdot B$ while per-iteration cost grows with $n$, the
+realised iteration count falls only from $15{,}095$ to $10{,}353$ across a
+sweep in which $n$ grows eightfold.
+
 \begin{table}[t]
 \centering
 \caption{Asymptotic worst-case cost per strategy, and the stage that
 dominates the \emph{measured} runtime, from per-stage timers at $N{=}400$
 ($B$ = per-cluster TSP budget, $5$~s; $B_z$ = per-zone CVRPTW budget,
-$20$~s). $^\dagger$~inferred from latency being invariant in $n$, not timed.
-\newline\todo{Confirmar el desglose por etapa de ALNS con mediciones
-reales (fila agregada abajo con el orden de complejidad conceptual).}}
+$20$~s). $^\dagger$~inferred from latency being invariant in $n$, not timed.}
 \label{tab:complexity}
 \small
 \setlength{\tabcolsep}{4pt}
@@ -664,7 +713,7 @@ Sectorial       & $O(T\,n^3)$, sweep $+$ flow & TSP budget $k\,B$ ($99.0\%$)\\
 CVRPTW (zonal)  & $O(n^2)$--$O(n^3)$, GLS & zone budget $|Z|\,B_z^{\;\dagger}$\\
 Set Cover (per-child) & ILP, exp.; $O(n^2)$ pool & ILP $67\%$, pool $28\%$\\
 Set Cover (grid)      & ILP, exp.; $O(n)$ seeds & ILP ($>98\%$)\\
-ALNS & $O(I\,n)$--$O(I\,n\log n)$, operator-dependent & \todo{medir \% destroy/repair vs.\ evaluacion}\\
+ALNS & $O(I\,n)$--$O(I\,n\log n)$, operator-dependent & repair $65\%$, destroy $29\%$\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -695,15 +744,38 @@ per-instance tuning, so the comparison reflects out-of-the-box
 behaviour. K-medoids uses iteration cap $T=50$; Sectorial uses
 $\alpha=0.6$, $\beta=0.4$, min--max radial normalization and $T=5$;
 the zonal CVRPTW uses $75$~min maximum duration, $90$~s boarding and a
-span-balancing coefficient of $300$; ALNS uses the fixed operator
-weights, iteration budget and acceptance schedule
-\todo{referenciar aqui los valores completados en
-Sec.~\ref{sec:alns}} across the whole sweep, matching the
-no-per-instance-tuning protocol used for the other five strategies.
+span-balancing coefficient of $300$; ALNS uses a destroy fraction of
+$0.10$--$0.25$, reaction factor $\theta=0.8$ with scores $(5,2,1,0.5)$,
+regret-2 repair and simulated-annealing acceptance fitted as described in
+Section~\ref{sec:alns}, under a wall-clock budget of $k\cdot5$~s that
+matches the clustering pipelines. These settings are held fixed across the
+whole sweep, matching the no-per-instance-tuning protocol used for the
+other five strategies.
 Statistical significance across
 strategies is assessed with the non-parametric Friedman test (blocks
 $=$ the $44$ scenarios), and pairwise differences with the Wilcoxon
 signed-rank test.
+
+\subsubsection{External calibration.}\label{sec:external}
+A benchmark of six in-house implementations on self-generated instances
+establishes relative standings but says nothing about absolute quality. To
+supply that reference point we run the ALNS solver, unchanged and through
+the same \texttt{Solver} interface, on the $27$ instances of the Augerat
+set~A~\cite{Augerat1995CVRP}, a classical CVRP family with published
+optimal values, $n=31$ to $79$ customers and capacity $100$. The loader
+reproduces the TSPLIB \texttt{EUC\_2D} convention exactly, that is,
+integer distances $\mathrm{nint}(\sqrt{\Delta x^2+\Delta y^2})$, which we
+verified by recomputing the cost of each published optimal solution under
+our own matrix and recovering the published value for all $27$ instances.
+Two differences from the SBRP setting are worth naming: these instances
+carry non-unit customer demands $q_i$, so capacity is a demand sum rather
+than a stop count, and each has a declared vehicle count that matches
+$\lceil \sum_i q_i / C\rceil$ in every case, so ALNS optimizes over the
+same fleet size the published optimum uses. Each instance gets a fixed
+$60$~s budget. Only ALNS is run here: the clustering pipelines assume unit
+demand, under which their capacitated assignment is an exact minimum-cost
+flow, and generalising them to arbitrary demands would change the
+algorithms being compared.
 
 % =====================================================================
 \section{Results}\label{sec:results}
@@ -713,16 +785,13 @@ Table~\ref{tab:quality} the remaining quality metrics at the most
 demanding density ($N=400$). Figures~\ref{fig:scalability}
 and~\ref{fig:pareto} show how latency scales and the distance--latency
 trade-off; Figure~\ref{fig:grid} contrasts the solution paradigms on a
-shared scenario. \todo{Las tres figuras (scalability.pdf,
-pareto\_N400.pdf, comparison\_row\_N200.png) deben regenerarse
-incluyendo la serie/panel de ALNS antes de la version camera-ready.}
+shared scenario. All three are generated from the same $308$-run output
+as the tables, so figure and table can not drift apart.
 
 \begin{table}[t]
 \centering
 \caption{Total fleet distance (km, mean $\pm$ std over 11 seeds) and
-latency (s, mean). Bold: distance minimum among full-coverage methods.
-\newline\todo{Completar la fila "ALNS" con los valores medidos reales;
-no se deben inventar cifras.}}
+latency (s, mean). Bold: distance minimum among full-coverage methods.}
 \label{tab:fleet}
 \label{tab:latency}
 \setlength{\tabcolsep}{2.2pt}
@@ -735,7 +804,7 @@ no se deben inventar cifras.}}
 \textbf{Strategy} & $50$ & $100$ & $200$ & $400$
                   & $50$ & $100$ & $200$ & $400$\\
 \midrule
-K-medoids + TSP      & \textbf{105$\pm$5}  & \textbf{163$\pm$18} & \textbf{271$\pm$21} & \textbf{460$\pm$26}
+K-medoids + TSP      & 105$\pm$5  & 163$\pm$18 & 271$\pm$21 & 460$\pm$26
   & 15.0 & 25.0 & 50.2 & 101.0\\
 Sectorial            & 105$\pm$5  & 165$\pm$19 & 272$\pm$21 & 461$\pm$25
   & 15.0 & 25.0 & 50.2 & 101.0\\
@@ -745,8 +814,8 @@ Set Cover (per-child) & 160$\pm$27 & 254$\pm$36 & 389$\pm$39 & 670$\pm$20
   & 0.02 & 0.02 & 0.04 & 0.16\\
 Set Cover (grid)      & 134$\pm$8  & 217$\pm$22 & 349$\pm$26 & 594$\pm$33
   & 0.27 & 0.74 & 3.19 & 66.6\\
-ALNS & \todo{km} & \todo{km} & \todo{km} & \todo{km}
-  & \todo{s} & \todo{s} & \todo{s} & \todo{s}\\
+ALNS                 & \textbf{98$\pm$5}  & \textbf{155$\pm$19} & \textbf{251$\pm$19} & \textbf{428$\pm$24}
+  & 15.0 & 25.0 & 50.0 & 100.0\\
 \bottomrule
 \end{tabular}
 \\[3pt]
@@ -757,8 +826,7 @@ to the full-coverage methods.}
 
 \begin{table}[t]
 \centering
-\caption{Quality metrics at $N{=}400$, mean over 11 seeds.
-\newline\todo{Completar la fila "ALNS" con los valores medidos reales.}}
+\caption{Quality metrics at $N{=}400$, mean over 11 seeds.}
 \label{tab:quality}
 \small
 \begin{tabular}{lcccc}
@@ -770,32 +838,37 @@ Sectorial            & 20.0 & 1.000 & 0.266 & 45.2\\
 CVRPTW (zonal)       & 22.4 & 0.998 & 0.272 & \textbf{30.3}\\
 Set Cover (per-child) & 26.9 & 1.000 & 0.230 & 50.8\\
 Set Cover (grid)      & 23.2 & 1.000 & 0.199 & 56.6\\
-ALNS & \todo{buses} & \todo{coverage} & \todo{silhouette} & \todo{km}\\
+ALNS                  & 20.0 & 1.000 & 0.068 & 43.3\\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \paragraph{Statistical significance.}
-\todo{Este parrafo debe calcularse sobre las 264 corridas reales de las
-6 estrategias (incluido ALNS): los rangos de Friedman, $\chi^2$, los
-p-valores y las brechas de Nemenyi. No se deben inventar estos numeros.
-El unico valor que no requiere recalculo es la prueba de Wilcoxon entre
-K-medoids y Sectorial, porque es una comparacion pareada entre esas dos
-series exclusivamente y no involucra a las demas estrategias.}
 The Friedman test rejects the null hypothesis of equal performance
 across the six strategies for both fleet distance
-(\todo{$\chi^2=?$, df$=5$, $p=?$}) and latency
-(\todo{$\chi^2=?$, df$=5$, $p=?$}). \todo{Reportar aqui los rangos
-medios (1 = mejor) de las 6 estrategias en distancia y en latencia,
-incluida la posicion de ALNS.}
-The two clustering leaders remain statistically indistinguishable: a
-Wilcoxon signed-rank test between K-medoids and Sectorial over the
-$44$ scenarios yields $p=0.36$, unaffected by which other strategies
-are included in the comparison. On latency, Set Cover (per-child)
-remains the fastest strategy in every scenario, followed by Set Cover
-(grid); \todo{ubicar aqui donde queda ALNS en la escala de latencia
-frente a las cinco estrategias restantes}, confirming the quality/speed
-tension visible in Figure~\ref{fig:pareto}.
+($\chi^2=201.74$, $\mathrm{df}=5$, $p<10^{-40}$) and latency
+($\chi^2=187.57$, $\mathrm{df}=5$, $p<10^{-37}$). On fleet distance the
+mean ranks (1 = best) are $1.02$ for ALNS, $2.63$ for Sectorial and
+$2.67$ for K-medoids, $3.68$ for CVRPTW, $5.05$ for Set Cover (grid) and
+$5.95$ for Set Cover (per-child). ALNS's rank of $1.02$ reflects an almost
+unbroken sweep: it returns the shortest fleet distance in $44$ of the $44$
+scenarios against both clustering pipelines, and in $43$ of $44$ against
+the zonal CVRPTW, whose single win comes on an instance where it leaves
+students unserved.
+The two clustering leaders remain statistically indistinguishable from
+each other: a Wilcoxon signed-rank test between K-medoids and Sectorial
+over the $44$ scenarios yields $p=0.36$, unaffected by which other
+strategies are included in the comparison. On latency, Set Cover
+(per-child) remains the fastest strategy in every scenario (mean rank
+$1.00$), followed by Set Cover (grid) ($2.18$) and then ALNS ($2.98$),
+ahead of K-medoids ($4.59$), Sectorial ($4.82$) and the zonal CVRPTW
+($5.43$). ALNS outranking the clustering pipelines on latency is an
+artefact worth stating plainly rather than a speed advantage: all three
+are given the same $k\cdot5$~s, but ALNS stops exactly on its budget
+whereas the OR-Tools calls overshoot theirs by about $1\%$
+(Table~\ref{tab:fleet}). The quality/speed tension visible in
+Figure~\ref{fig:pareto} therefore now has a strategy at the favourable
+corner of both axes among the budgeted methods.
 
 Since a Friedman rejection only says \emph{some} strategies differ, we
 add the Nemenyi post-hoc~\cite{Demsar2006Statistical}, which separates
@@ -804,9 +877,65 @@ $\mathrm{CD}=q_\alpha\sqrt{k(k+1)/6N}$. With $k=6$ strategies, $N=44$
 blocks and $\alpha=0.05$ ($q_\alpha=2.850$ for $k=6$, the tabulated
 Nemenyi critical value), $\mathrm{CD}=2.850\sqrt{6\cdot7/(6\cdot44)}
 \approx 1.14$. There are $\binom{6}{2}=15$ pairwise comparisons in
-total. \todo{Reportar aqui cuantos de esos 15 pares superan CD y
-cuales quedan sin resolver, calculado sobre las 6 estrategias con datos
-reales de ALNS.}
+total, of which $11$ clear $\mathrm{CD}$ on fleet distance. ALNS
+separates from every other strategy: from Set Cover (per-child)
+($\Delta=4.93$), Set Cover (grid) ($4.02$), the zonal CVRPTW ($2.66$) and,
+decisively for the headline claim, from K-medoids ($1.65$) and Sectorial
+($1.60$), both comfortably above $\mathrm{CD}=1.14$. The two clustering
+pipelines in turn separate from Set Cover (per-child) ($3.28$--$3.33$) and
+Set Cover (grid) ($2.38$--$2.42$), and the CVRPTW from both set-covering
+variants ($1.36$ and $2.27$). Four pairs remain unresolved: K-medoids
+versus Sectorial ($0.045$), each of them against the CVRPTW
+($1.01$--$1.06$), and the two set-covering variants against each other
+($0.91$). The design therefore resolves the comparison that matters most
+here, ALNS against the previous leaders, while leaving the same
+near-ties open that eleven seeds could not separate before.
+
+\paragraph{Absolute quality against published optima.}
+On the external instances of Section~\ref{sec:external} the same ALNS
+configuration solves $19$ of $27$ to proven optimality and averages
+$0.221\%$ above the optimum, with a median gap of exactly $0$ and a worst
+case of $1.71\%$ (A-n64-k9); every returned solution is capacity-feasible,
+covers all customers and uses the declared number of vehicles
+(Table~\ref{tab:cvrplib}). The eight non-zero gaps are concentrated in the
+larger instances, $n\ge52$, which is where a $60$~s budget buys
+proportionally fewer iterations. This does not make our ALNS
+state-of-the-art, dedicated CVRP solvers close set~A routinely, but it does
+bound what the rest of this paper leaves open: the strategy that wins our
+benchmark is itself within a fraction of a percent of optimal on
+independent instances, so the margins reported in
+Table~\ref{tab:fleet} are differences between a near-optimal method and
+the rest, not between six equally unvalidated ones.
+
+\begin{table}[t]
+\centering
+\caption{ALNS against published optima on Augerat set~A, $60$~s per
+instance. Gap is $100(\mathrm{ALNS}-\mathrm{opt})/\mathrm{opt}$.
+All $27$ solutions are feasible and use the declared vehicle count.}
+\label{tab:cvrplib}
+\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{lrrr@{\hskip 8pt}lrrr@{\hskip 8pt}lrrr}
+\toprule
+\textbf{Inst.} & $n$ & \textbf{opt} & \textbf{\%} &
+\textbf{Inst.} & $n$ & \textbf{opt} & \textbf{\%} &
+\textbf{Inst.} & $n$ & \textbf{opt} & \textbf{\%}\\
+\midrule
+A-n32-k5 & 31 & 784 & 0.00 & A-n33-k5 & 32 & 661 & 0.00 & A-n33-k6 & 32 & 742 & 0.00 \\
+A-n34-k5 & 33 & 778 & 0.00 & A-n36-k5 & 35 & 799 & 0.00 & A-n37-k5 & 36 & 669 & 0.00 \\
+A-n37-k6 & 36 & 949 & 0.00 & A-n38-k5 & 37 & 730 & 0.00 & A-n39-k5 & 38 & 822 & 0.00 \\
+A-n39-k6 & 38 & 831 & 0.00 & A-n44-k6 & 43 & 937 & 0.00 & A-n45-k6 & 44 & 944 & 0.00 \\
+A-n45-k7 & 44 & 1146 & 0.00 & A-n46-k7 & 45 & 914 & 0.00 & A-n48-k7 & 47 & 1073 & 0.00 \\
+A-n53-k7 & 52 & 1010 & 0.69 & A-n54-k7 & 53 & 1167 & 0.00 & A-n55-k9 & 54 & 1073 & 0.00 \\
+A-n60-k9 & 59 & 1354 & 0.66 & A-n61-k9 & 60 & 1034 & 0.10 & A-n62-k8 & 61 & 1288 & 0.00 \\
+A-n63-k9 & 62 & 1616 & 0.68 & A-n63-k10 & 62 & 1314 & 0.38 & A-n64-k9 & 63 & 1401 & 1.71 \\
+A-n65-k9 & 64 & 1174 & 0.00 & A-n69-k9 & 68 & 1159 & 0.78 & A-n80-k10 & 79 & 1763 & 0.96 \\
+\midrule
+\multicolumn{12}{l}{\textbf{19/27 optimal} \quad mean $0.221\%$ \quad
+median $0.000\%$ \quad max $1.71\%$}\\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{figure}[t]
 \centering
@@ -848,33 +977,56 @@ ALNS solution, drawn over the real road network.}
 on a shared scenario ($N{=}200$, seed 1). Left: Sectorial produces
 compact, wedge-shaped clusters radiating from the depot. Centre: the
 grid set-covering ILP fills every selected route to capacity, so its
-routes overlap and some students are visited twice. Right: the ALNS
-solution after its destroy--repair search. \todo{Regenerar esta figura
-con el tercer panel de ALNS, usando la salida real del solver sobre
-este mismo escenario ($N{=}200$, seed 1); no describir su apariencia
-hasta tener el panel real.}}
+routes overlap and some students are visited twice. Right: ALNS serves the
+same ten buses as Sectorial but abandons the wedge structure; its routes
+are elongated corridors that follow the valley and interleave near the
+depot, so neighbouring buses share territory wherever that shortens the
+tours. This interleaving is exactly what the low silhouette of
+Table~\ref{tab:quality} measures, and it coincides with the shortest
+fleet distance rather than the longest.}
 \label{fig:grid}
 \end{figure}
 
 % =====================================================================
 \section{Discussion}\label{sec:discussion}
 % =====================================================================
-\paragraph{Why clustering wins.}
-K-medoids and Sectorial achieve the shortest fleet distance because
-they produce spatially compact, well-separated clusters. At $N=400$,
-K-medoids attains the highest silhouette ($0.276$; Table~\ref{tab:quality}),
-closely followed by the zonal CVRPTW ($0.272$) and Sectorial ($0.266$),
-so cohesion alone does not single out the two distance leaders. Cohesion
-also predicts cost only at scale: within a density, silhouette
-correlates with fleet distance at $r=-0.95$ at $N{=}400$ but merely
-$r=-0.02$ at $N{=}50$. Compact clusters shorten the inter-stop distances
-the per-cluster TSP must traverse, so a good partition does most of the
-optimization before routing begins, confirming the cluster-first,
-route-second rationale~\cite{CakirRevisitingProblem,Comert2018AStudy}.
-Notably, the cheap angular score (Eq.~\ref{eq:sectorial-score})
-recovers essentially the quality of medoid optimization (Wilcoxon
-$p=0.36$); the $1.0$~km that separates them at $N{=}400$ is well inside
-seed noise.
+\paragraph{Clustering is a good heuristic, not the objective.}
+Among the cluster-first, route-second pipelines the story is the familiar
+one: K-medoids and Sectorial produce spatially compact, well-separated
+clusters, K-medoids attains the highest silhouette at $N=400$ ($0.276$;
+Table~\ref{tab:quality}), and compact clusters shorten the inter-stop
+distances the per-cluster TSP must traverse, so a good partition does most
+of the optimization before routing begins~\cite{CakirRevisitingProblem,Comert2018AStudy}.
+The cheap angular score (Eq.~\ref{eq:sectorial-score}) recovers
+essentially the quality of medoid optimization (Wilcoxon $p=0.36$); the
+$1.0$~km that separates them at $N{=}400$ is well inside seed noise.
+
+ALNS breaks that story, and this is the most consequential finding of the
+present study. It attains the \emph{shortest} fleet distance at every
+density while producing by far the \emph{least} cohesive partition:
+silhouette $0.068$ at $N=400$, a quarter of K-medoids' $0.276$, and
+falling monotonically with scale ($0.325$, $0.265$, $0.174$, $0.068$ from
+$N=50$ to $N=400$) even as its distance advantage holds at
+$4.8$--$7.3\%$. Cohesion and cost are therefore not two views of the same
+quantity. A capacitated partition chosen to be compact is a good
+\emph{heuristic} for short routes, because it makes each TSP easy; but it
+is a constraint on the solution, and a search that optimizes
+$L_{\mathrm{total}}$ directly will spend that compactness whenever
+interleaving two buses' territories buys a shorter tour
+(Fig.~\ref{fig:grid}, right).
+
+This also revises how the correlation between cohesion and cost should be
+read. Measured over the runs within a density, silhouette and fleet
+distance correlate at $r=-0.95$ at $N{=}400$ when the sixth strategy is a
+flat-permutation genetic algorithm, as in an earlier iteration of this
+benchmark. That coefficient does not survive substitution: with ALNS in
+its place the same computation gives $r=+0.09$ ($p=0.48$), and no density
+shows a significant negative association ($r=-0.35$ to $+0.09$). The
+strong correlation was carried by a single strategy that was simultaneously
+incoherent and long, not by a general law relating the two. We therefore
+report cohesion as a descriptive property of a solution rather than as a
+predictor of its cost, and we would caution against selecting an SBRP
+solver on a clustering-quality score.
 
 \paragraph{The CVRPTW trade-off.}
 The zonal CVRPTW yields competitive distances but is not free: it
@@ -893,9 +1045,10 @@ objectives.}
 The set-cover programs are the speed champions: the per-child variant
 solves every instance in under a quarter of a second, and the grid
 variant is an order of magnitude slower but still far faster than the
-clustering pipelines at $N\le200$. \todo{Reportar aqui el rango de
-distancia (rank) de cada variante de set covering entre las 6
-estrategias, con ALNS incluido en el calculo de rangos.} As discussed
+clustering pipelines at $N\le200$. On distance they occupy the last two
+places of the six, with mean ranks $5.05$ for grid and $5.95$ for
+per-child; on latency they occupy the first two, $2.18$ and $1.00$. As
+discussed
 in Section~\ref{sec:setcover-two}, however,
 the two variants are not a controlled test of the same design choice:
 per-child minimizes fleet size and never receives a distance signal, so
@@ -912,24 +1065,29 @@ construction.
 
 \paragraph{Limitations.}
 Eleven seeds per density give $44$ blocks. With six strategies there
-are $\binom{6}{2}=15$ pairwise comparisons in total. \todo{Reportar
-aqui cuantos de esos 15 pares separa el diseno estadistico (CD del
-Nemenyi, Sec.~\ref{sec:results}) y cuales quedan sin resolver, una vez
-incluidos los datos reales de ALNS.} The K-medoids versus Sectorial tie
-is a genuine equivalence by every test we applied; whichever pairs
-remain unresolved among the other four methods should be reported as
-such, not assumed from either the five- or the six-strategy count
-alone.
+are $\binom{6}{2}=15$ pairwise comparisons in total, of which the
+Nemenyi critical difference separates $11$ on fleet distance
+(Section~\ref{sec:results}). Four remain unresolved: K-medoids versus
+Sectorial ($\Delta=0.045$), each of those two against the zonal CVRPTW
+($1.01$ and $1.06$, both just under $\mathrm{CD}=1.14$), and the two
+set-covering variants against each other ($0.91$). The K-medoids versus
+Sectorial tie is a genuine equivalence by every test we applied; the other
+three are power limits of a $44$-block design, not evidence of
+equivalence, and we do not report them as such. Every comparison involving
+ALNS is resolved.
 
-More consequential is the absence of an external reference point. All
-six strategies, including our ALNS configuration, are our own
-implementations on instances we generate, so the study establishes
-\emph{relative} standings under identical conditions but calibrates
-them against neither published SBRP benchmark instances nor other
-authors' state-of-the-art metaheuristic implementations; absolute
-quality therefore remains open, and closing that gap by benchmarking
-against external instances and implementations is the
-highest-priority extension. A related, narrower limitation is that our
+The external reference point is now partial rather than absent. All six
+strategies are our own implementations on instances we generate, and
+Section~\ref{sec:external} calibrates only \emph{one} of them, ALNS,
+and only against published \emph{CVRP} optima, not SBRP instances. Three
+gaps remain. The other five strategies are still uncalibrated in absolute
+terms, so their standings rest on the comparison with ALNS rather than on
+any external value. Set~A instances are small ($n\le79$) and Euclidean,
+whereas our scenarios are larger and run on a directed road network, so
+the near-optimality shown there need not carry to $N=400$ in Medell\'in.
+And we compare against published optimal \emph{values}, not against other
+authors' running implementations, so we can state how far our solutions
+are from optimal but not how our runtimes compare with theirs. A related, narrower limitation is that our
 results speak to \emph{one} ALNS configuration (Section~\ref{sec:alns}):
 a different operator mix, acceptance schedule or iteration budget could
 shift its standing, so its ranking here should not be read as a bound
@@ -958,14 +1116,22 @@ zonal CVRPTW is the method of choice when bounded ride time is
 mandatory. A locality-aware metaheuristic, an adaptive
 large-neighbourhood search (ALNS, Section~\ref{sec:alns}), is included
 as the sixth strategy, tested under the same harness and metrics used
-throughout this paper. \todo{Resumir aqui, en 1-2 frases, donde queda
-ALNS frente a las otras cinco estrategias una vez completados los
-pendientes numericos de las Secs.~\ref{sec:results} y
-\ref{sec:discussion} con datos reales.}
+throughout this paper. Given the same wall clock as the clustering
+pipelines it is the strongest strategy we measured, taking the shortest
+fleet distance in all $44$ scenarios, $4.8$--$7.3\%$ below the previous
+leaders, and separating from them by more than the Nemenyi critical
+difference; calibration against $27$ published CVRP instances puts it a
+mean $0.22\%$ from the known optima, with $19$ solved to proven
+optimality, which is the external reference point the rest of this
+benchmark lacks. Its partitions are also the least cohesive of the six, so
+the practical lesson is not that clustering was the wrong idea but that
+cluster compactness is a means to short routes and not a proxy for
+them.
 
-Future work will (i)~calibrate the harness against published SBRP and
-CVRP benchmark instances and against other authors' state-of-the-art
-metaheuristic implementations; (ii)~broaden the statistical design with
+Future work will (i)~extend the external calibration of
+Section~\ref{sec:external} to the remaining five strategies, to larger
+and road-network-based instances, and to running comparisons against other
+authors' implementations rather than published values alone; (ii)~broaden the statistical design with
 more seeds to resolve the pairs the Nemenyi test leaves open;
 (iii)~explore the sensitivity of the ALNS results to its operator mix,
 acceptance schedule and iteration budget (Section~\ref{sec:alns}),
@@ -995,8 +1161,13 @@ sampled from publicly available OpenStreetMap road-network data, not
 records of real students. \todo{Confirmar si la universidad requiere una
 declaracion adicional.}}
 
-\bibliographystyle{spmpsci}
-\bibliography{refs}
+% La plantilla oficial de camera-ready (CITIS-Final-Paper.tex) no usa
+% \bibliographystyle/\bibliography: incluye la bibliografia manualmente
+% via \input{References}, que ya contiene el entorno thebibliography.
+% Mantener ambos mecanismos duplica la bibliografia y rompe la compilacion
+% si se ejecuta bibtex/latexmk, ademas refs.bib no esta en esta carpeta.
+% \bibliographystyle{spmpsci}
+% \bibliography{refs}
 % \todo{Springer recomienda, para la version camera-ready, correr
 % bibtex localmente y pegar el .bbl resultante aqui en lugar de
 % \bibliography{refs}, o subir refs.bib junto con el .bst

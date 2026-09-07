@@ -78,54 +78,50 @@ Universidad Pontificia Bolivariana, Medell\'in, Colombia
 \maketitle
 
 \abstract*{The School Bus Routing Problem (SBRP) is an NP-hard
-combinatorial optimization problem generalizing the capacitated
-vehicle routing problem and underpinning daily student transport.
-Although the literature offers many heuristic strategies, head-to-head
-comparisons under identical, realistic conditions remain scarce. We
-present a unified benchmark evaluating six clustering-, covering-, and
-search-based strategies on identical scenarios from the real
-OpenStreetMap road network of Medell\'in (Colombia). All share a solver
-interface, directed shortest paths, a single depot, and a bus capacity of
-twenty, measured on fleet distance, computation time, coverage, and
-cluster cohesion across densities $N\in\{50,100,200,400\}$ with eleven
-seeds each (264 runs). Under an identical wall-clock budget, Adaptive
-Large Neighborhood Search (ALNS) achieves the shortest fleet distance at
-every density, winning all 44 scenarios against the clustering pipelines
-(mean rank 1.02 of 6) and calibrating within 0.22\% of known CVRP optima.
-Crucially, ALNS yields these routes with markedly less cohesive clusters
-(silhouette 0.068 vs.\ 0.276 for K-medoids at $N=400$), indicating that
-spatial compactness is a byproduct of good routes rather than their cause.
-In contrast, the zonal CVRPTW caps ride time, cutting the longest route by
+generalization of the capacitated vehicle routing problem, yet
+head-to-head comparisons of its heuristics under identical conditions
+remain scarce. We benchmark six strategies based on
+clustering, set covering and adaptive search on identical scenarios from
+the real OpenStreetMap road network of Medell\'in (Colombia). All share a solver interface, directed shortest
+paths, a single depot and a capacity of twenty, and are measured on fleet
+distance, computation time, coverage and cluster cohesion across
+densities $N\in\{50,100,200,400\}$ with eleven seeds each (264 runs).
+Under an identical wall-clock budget, Adaptive Large Neighborhood Search
+(ALNS) achieves the shortest fleet distance at every density, winning all
+44 scenarios against the clustering pipelines (mean rank 1.02 of 6) and
+calibrating within 0.22\% of known CVRP optima. It yields those routes
+with the \emph{least} cohesive clusters (silhouette 0.068 vs.\ 0.276 for
+K-medoids at $N{=}400$), indicating that spatial compactness is a
+byproduct of good routes, not their cause. The
+zonal CVRPTW instead caps ride time, cutting the longest route by
 30--47\% at $N{=}400$, while the two set-covering programs trade distance
-for speed at two different points of that trade-off because they optimize
-different objectives. We distill these trade-offs into practical
-guidance for SBRP solver selection.
+for speed at
+two different points because they optimize different objectives. We
+distil these trade-offs into solver-selection guidance.
 \keywords{School Bus Routing Problem $\cdot$ Capacitated clustering $\cdot$
 Vehicle routing $\cdot$ Set covering $\cdot$ Road-network optimization.}}
 
 \abstract{The School Bus Routing Problem (SBRP) is an NP-hard
-combinatorial optimization problem generalizing the capacitated
-vehicle routing problem and underpinning daily student transport.
-Although the literature offers many heuristic strategies, head-to-head
-comparisons under identical, realistic conditions remain scarce. We
-present a unified benchmark evaluating six clustering-, covering-, and
-search-based strategies on identical scenarios from the real
-OpenStreetMap road network of Medell\'in (Colombia). All share a solver
-interface, directed shortest paths, a single depot, and a bus capacity of
-twenty, measured on fleet distance, computation time, coverage, and
-cluster cohesion across densities $N\in\{50,100,200,400\}$ with eleven
-seeds each (264 runs). Under an identical wall-clock budget, Adaptive
-Large Neighborhood Search (ALNS) achieves the shortest fleet distance at
-every density, winning all 44 scenarios against the clustering pipelines
-(mean rank 1.02 of 6) and calibrating within 0.22\% of known CVRP optima.
-Crucially, ALNS yields these routes with markedly less cohesive clusters
-(silhouette 0.068 vs.\ 0.276 for K-medoids at $N=400$), indicating that
-spatial compactness is a byproduct of good routes rather than their cause.
-In contrast, the zonal CVRPTW caps ride time, cutting the longest route by
+generalization of the capacitated vehicle routing problem, yet
+head-to-head comparisons of its heuristics under identical conditions
+remain scarce. We benchmark six strategies based on
+clustering, set covering and adaptive search on identical scenarios from
+the real OpenStreetMap road network of Medell\'in (Colombia). All share a solver interface, directed shortest
+paths, a single depot and a capacity of twenty, and are measured on fleet
+distance, computation time, coverage and cluster cohesion across
+densities $N\in\{50,100,200,400\}$ with eleven seeds each (264 runs).
+Under an identical wall-clock budget, Adaptive Large Neighborhood Search
+(ALNS) achieves the shortest fleet distance at every density, winning all
+44 scenarios against the clustering pipelines (mean rank 1.02 of 6) and
+calibrating within 0.22\% of known CVRP optima. It yields those routes
+with the \emph{least} cohesive clusters (silhouette 0.068 vs.\ 0.276 for
+K-medoids at $N{=}400$), indicating that spatial compactness is a
+byproduct of good routes, not their cause. The
+zonal CVRPTW instead caps ride time, cutting the longest route by
 30--47\% at $N{=}400$, while the two set-covering programs trade distance
-for speed at two different points of that trade-off because they optimize
-different objectives. We distill these trade-offs into practical
-guidance for SBRP solver selection.
+for speed at
+two different points because they optimize different objectives. We
+distil these trade-offs into solver-selection guidance.
 \keywords{School Bus Routing Problem $\cdot$ Capacitated clustering $\cdot$
 Vehicle routing $\cdot$ Set covering $\cdot$ Road-network optimization.}}
 
@@ -174,8 +170,8 @@ published CVRP instances with known optima (Section~\ref{sec:external}).
 \item \textbf{Practical guidance}: an adaptive large-neighbourhood search
 (ALNS, Section~\ref{sec:alns}) given the same wall clock as the clustering
 pipelines returns the shortest fleet distance in every scenario, while
-set-covering programs hold the speed end of the trade-off --- and it does
-so with the \emph{least} cohesive clusters of the six, evidence that
+set-covering programs hold the speed end of the trade-off. It does so
+with the \emph{least} cohesive clusters of the six, evidence that
 compactness is a means to short routes, not a proxy for them
 (Section~\ref{sec:discussion}).
 \end{itemize}
@@ -232,10 +228,10 @@ and Lin--Kernighan~\cite{HelsgaunAnHeuristic} are the classical tools.
 Modern solvers wrap these in metaheuristics: OR-Tools~\cite{PerronFurnon2023ORTools},
 which we use for the routing stage, drives local search with Guided Local
 Search~\cite{Voudouris1999GLS}. Population- and physics-inspired
-metaheuristics are widely applied to routing --- deterministic
+metaheuristics are widely applied to routing (deterministic
 annealing~\cite{Baranwal2016DAVRPTW}, the black-hole
 algorithm~\cite{Hatamlou2018BlackHole}, genetic
-algorithms~\cite{Holland1992Adaptation} --- and learning-based approaches
+algorithms~\cite{Holland1992Adaptation}), and learning-based approaches
 have matured from graph convolutional
 networks~\cite{Joshi2019GCN,Dahiya2018TSPReview} into a distinct family of
 neural VRP solvers~\cite{Wu2024NCOSurvey}, alongside emissions-aware
@@ -618,7 +614,7 @@ strategies when their mean ranks differ by more than
 $\mathrm{CD}=q_\alpha\sqrt{k(k+1)/6N}$; with $k=6$, $N=44$ and
 $\alpha=0.05$ ($q_\alpha=2.850$), $\mathrm{CD}\approx1.14$. Of the
 $\binom{6}{2}=15$ pairs, $11$ clear it on fleet distance. ALNS separates
-from every other strategy --- Set Cover (per-child) $\Delta=4.93$, Set
+from every other strategy: Set Cover (per-child) $\Delta=4.93$, Set
 Cover (grid) $4.02$, zonal CVRPTW $2.66$ and, decisively for the headline
 claim, K-medoids $1.65$ and Sectorial $1.60$. The clustering pipelines in
 turn separate from Set Cover (per-child) ($3.28$--$3.33$) and Set Cover
@@ -640,8 +636,8 @@ $0.68\%$, A-n53-k7 $0.69\%$, A-n69-k9 $0.78\%$, A-n80-k10 $0.96\%$ and
 A-n64-k9 $1.71\%$. These are not a budget artefact: raising the limit to
 $300$~s multiplies the iteration count sevenfold ($51.6$k to $360.2$k) yet
 moves the mean gap only to $0.205\%$, leaving seven of the eight unchanged
-and the proven optima at $19$ --- a limit of the operator pool, not of the
-time given to it. Dedicated solvers close set~A routinely, so this does
+and the proven optima at $19$. What remains is a limit of the operator
+pool, not of the time given to it. Dedicated solvers close set~A routinely, so this does
 not make our ALNS state-of-the-art, but it bounds what the rest of the
 paper leaves open: the strategy that wins our benchmark is within a
 fraction of a percent of optimal on independent instances, so the margins

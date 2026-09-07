@@ -269,3 +269,6 @@ cache/medellin_valle_drive.graphml
 # SNmult.cls regenerates this alt-text dump on every compile; the
 # submission artefact is ALT_Text_*.xlsx, not this file.
 docs/latexLNNS/DescriptionTexts.txt
+
+# Submission bundle, rebuilt from the tracked sources on demand.
+docs/latexLNNS/*.zip

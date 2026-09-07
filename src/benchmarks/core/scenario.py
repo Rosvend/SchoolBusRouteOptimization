@@ -35,6 +35,9 @@ class Scenario:
     seed: int
     zones: list[ZonePolygon] | None = None
     node_zones: np.ndarray | None = None  # zone-name string per row, length n+1
+    # Per-node demand, length n+1, depot 0. None means unit demand (one student
+    # per stop), which is the SBRP case; external CVRP instances set it.
+    demands: np.ndarray | None = None
 
     @property
     def children_idx(self) -> np.ndarray:

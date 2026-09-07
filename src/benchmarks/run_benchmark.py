@@ -7,7 +7,7 @@ comparison grid, and aggregates a paper-ready summary table.
 Usage (from repo root):
     python -m src.benchmarks.run_benchmark
     python -m src.benchmarks.run_benchmark --densities 50 --seeds 1 \
-        --algos kmedoids_ortools genetic
+        --algos kmedoids_ortools alns
 """
 from __future__ import annotations
 
@@ -20,6 +20,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from .adapters.alns import AlnsSolver
 from .adapters.cvrptw_zones import CVRPTWZonesSolver
 from .adapters.genetic import GeneticSolver
 from .adapters.kmedoids_ortools import KmedoidsORToolsSolver
@@ -39,8 +40,17 @@ SOLVER_REGISTRY: dict[str, type[Solver]] = {
     "cvrptw_zones":      CVRPTWZonesSolver,
     "setcover_perchild": SetCoverPerChildSolver,
     "setcover_grid":     SetCoverGridSolver,
+    "alns":              AlnsSolver,
+    # Superseded by ALNS as the paper's metaheuristic baseline. Kept registered
+    # so the historical `genetic` rows in results/ stay reproducible, but out of
+    # the default sweep.
     "genetic":           GeneticSolver,
 }
+
+# The six strategies the paper reports. `--algos` defaults to these rather than
+# to the whole registry.
+PAPER_ALGOS = ["kmedoids_ortools", "sectorial", "cvrptw_zones",
+               "setcover_perchild", "setcover_grid", "alns"]
 
 DEFAULT_DENSITIES = [50, 100, 200, 400]
 DEFAULT_SEEDS = [1, 2, 3]
@@ -174,7 +184,7 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--densities", nargs="+", type=int, default=DEFAULT_DENSITIES)
     p.add_argument("--seeds", nargs="+", type=int, default=DEFAULT_SEEDS)
-    p.add_argument("--algos", nargs="+", default=list(SOLVER_REGISTRY.keys()))
+    p.add_argument("--algos", nargs="+", default=list(PAPER_ALGOS))
     p.add_argument("--output-dir", type=Path, default=Path("results"))
     p.add_argument("--no-plots", action="store_true")
     p.add_argument("--no-grid", action="store_true",

@@ -21,11 +21,11 @@ ORDER = [
     ("cvrptw_zones", "CVRPTW (zonal)$^\\ast$"),
     ("setcover_perchild", "Set Cover (per-child)"),
     ("setcover_grid", "Set Cover (grid)"),
-    ("genetic", "Genetic"),
+    ("alns", "ALNS"),
 ]
 # CVRPTW is excluded from distance bolding: it may leave students unserved.
 FULL_COVERAGE = {"kmedoids_ortools", "sectorial", "setcover_perchild",
-                 "setcover_grid", "genetic"}
+                 "setcover_grid", "alns"}
 
 
 def load(path: Path):

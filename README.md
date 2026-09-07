@@ -14,18 +14,24 @@ Both layers model one school/depot and bus-capacity-constrained assignments, and
 ## Project Status
 
 - The baseline pipeline (k-medoids + OR-Tools) is complete and produces full-coverage routes.
-- A unified benchmarking harness compares five algorithms on identical scenarios:
+- A unified benchmarking harness compares six algorithms on identical scenarios:
   1. `kmedoids_ortools` — capacitated k-medoids (min-cost flow) + OR-Tools TSP per cluster.
-  2. `cvrptw_zones` — CVRPTW with fixed geographic zones, time windows, and max route duration.
-  3. `setcover_perchild` — per-child Set Cover ILP (PuLP/CBC) + nearest-neighbor tour.
-  4. `setcover_grid` — grid-seeded Set Cover ILP + greedy TSP.
-  5. `genetic` — generic GA with OX crossover, swap mutation, tournament selection, elitism, 2-opt refinement.
+  2. `sectorial` — angular/radial multi-objective sweep + min-cost-flow refinement + OR-Tools TSP.
+  3. `cvrptw_zones` — CVRPTW with fixed geographic zones, time windows, and max route duration.
+  4. `setcover_perchild` — per-child Set Cover ILP (PuLP/CBC) + nearest-neighbor tour.
+  5. `setcover_grid` — grid-seeded Set Cover ILP + greedy TSP.
+  6. `alns` — adaptive large-neighbourhood search: random/worst/Shaw removal with
+     greedy and regret-2 reinsertion, under the same per-bus wall-clock budget as
+     the clustering pipelines.
+- `genetic` (flat-permutation GA) is still registered and runnable, but it is superseded
+  by `alns` as the metaheuristic baseline and is out of the default sweep.
 - Latest sweep results live in `results/` (`runs.csv`, `summary.md`, `scalability.png`, per-scenario maps under `plots/`).
 - A talking-points write-up of the comparative evaluation is in `docs/BENCHMARK_INSIGHTS.md`; the LaTeX paper is under `docs/latex/`.
 
 ### Headline benchmark results
 
-From the most recent sweep at N=100 students (mean over 3 seeds, full default settings):
+From an early sweep at N=100 students (mean over 3 seeds). **Stale**: predates the
+11-seed sweep and the `sectorial`/`alns` strategies; `results/runs.csv` is authoritative.
 
 | algo              | fleet distance (m) | latency (s) | buses | coverage | silhouette |
 |-------------------|--------------------|-------------|-------|----------|------------|
@@ -226,13 +232,13 @@ python src/tsp_solver.py
 ### Benchmark sweep (all algorithms)
 
 ```bash
-# full default sweep: N ∈ {50, 100, 200, 400} × 3 seeds × 5 algorithms (~45 min)
+# full default sweep: N ∈ {50, 100, 200, 400} × 3 seeds × 6 algorithms (~1 h)
 python -m src.benchmarks.run_benchmark
 
 # quick smoke test
 python -m src.benchmarks.run_benchmark \
     --densities 100 --seeds 1 \
-    --algos kmedoids_ortools genetic
+    --algos kmedoids_ortools alns
 ```
 
 Outputs land in `results/` (CSV + summary + plots) and are written incrementally so a crash mid-sweep does not lose data.

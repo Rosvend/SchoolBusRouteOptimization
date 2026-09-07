@@ -247,6 +247,9 @@ __marimo__/
 *.blg
 *.run.xml
 *.pdf
+*.idx
+*.ilg
+*.ind 
 
 # Benchmarks
 results/
@@ -260,3 +263,12 @@ cache/medellin_valle_drive.graphml
 # a clean clone, since optimization.tex \includegraphics these files.
 !docs/latex/figures/*.pdf
 !docs/latex/figures/*.png
+!docs/latexLNNS/figures/*.pdf
+!docs/latexLNNS/figures/*.png
+
+# SNmult.cls regenerates this alt-text dump on every compile; the
+# submission artefact is ALT_Text_*.xlsx, not this file.
+docs/latexLNNS/DescriptionTexts.txt
+
+# Submission bundle, rebuilt from the tracked sources on demand.
+docs/latexLNNS/*.zip
